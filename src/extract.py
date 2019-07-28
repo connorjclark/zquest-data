@@ -1,0 +1,431 @@
+from struct import *
+import sys
+import math
+from PIL import Image
+
+# https://github.com/ArmageddonGames/ZeldaClassic/blob/30c9e17409304390527fcf84f75226826b46b819/src/zdefs.h#L155
+ID_HEADER = b'HDR '
+ID_RULES = b'RULE'
+ID_STRINGS = b'STR '
+ID_MISC = b'MISC'
+ID_TILES = b'TILE'
+ID_COMBOS = b'CMBO'
+ID_CSETS = b'CSET'
+ID_MAPS = b'MAP '
+ID_DMAPS = b'DMAP'
+ID_DOORS = b'DOOR'
+ID_ITEMS = b'ITEM'
+ID_WEAPONS = b'WPN '
+ID_COLORS = b'MCLR'
+ID_ICONS = b'ICON'
+ID_GRAPHICSPACK = b'GPAK'
+ID_INITDATA = b'INIT'
+ID_GUYS = b'GUY '
+ID_MIDIS = b'MIDI'
+ID_CHEATS = b'CHT '
+ID_SAVEGAME = b'SVGM'
+ID_COMBOALIASES = b'CMBA'
+ID_LINKSPRITES = b'LINK'
+ID_SUBSCREEN = b'SUBS'
+ID_ITEMDROPSETS = b'DROP'
+ID_FAVORITES = b'FAVS'
+ID_FFSCRIPT = b'FFSC'
+ID_SFX = b'SFX '
+
+# V_HEADER =  3
+# V_RULES = 15
+# V_STRINGS =  6
+# V_MISC = 11
+# V_TILES =  2
+# V_COMBOS = 12
+# V_CSETS =  4
+# V_MAPS = 22
+# V_DMAPS = 13
+# V_DOORS =  1
+# V_ITEMS = 45
+# V_WEAPONS =  7
+# V_COLORS =  3
+# V_ICONS = 10
+# V_GRAPHICSPACK =  1
+# V_INITDATA = 19
+# V_GUYS = 41
+# V_MIDIS =  4
+# V_CHEATS =  1
+# V_SAVEGAME = 12
+# V_COMBOALIASES =  3
+# V_LINKSPRITES =  5
+# V_SUBSCREEN =  6
+# V_ITEMDROPSETS =  2
+# V_FFSCRIPT = 13
+# V_SFX =  7
+# V_FAVORITES =  1
+
+# CV_HEADER = 3
+# CV_RULES = 1
+# CV_STRINGS = 2
+# CV_MISC = 7
+# CV_TILES = 1
+# CV_COMBOS = 1
+# CV_CSETS = 1
+# CV_MAPS = 9
+# CV_DMAPS = 1
+# CV_DOORS = 1
+# CV_ITEMS =15
+# CV_WEAPONS = 1
+# CV_COLORS = 1
+# CV_ICONS = 1
+# CV_GRAPHICSPACK = 1
+# CV_INITDATA =15
+# CV_GUYS = 4
+# CV_MIDIS = 3
+# CV_CHEATS = 1
+# CV_SAVEGAME = 5
+# CV_COMBOALIASES = 1
+# CV_LINKSPRITES = 1
+# CV_SUBSCREEN = 3
+# CV_ITEMDROPSETS = 1
+# CV_FFSCRIPT = 1
+# CV_SFX = 5
+# CV_FAVORITES = 1
+
+def assert_equal(expected, actual):
+  if expected != actual:
+    raise Exception(f'expected {expected} but got {actual}')
+    
+class Bytes:
+  def __init__(self, f):
+    self.f = f
+    self.bytes_read = 0
+  
+  def has_bytes(self):
+    more_bytes = self.f.read(1) != b''
+    if more_bytes:
+      self.f.seek(-1,1)
+    return more_bytes
+  
+  def read(self, n):
+    self.bytes_read += n
+    return self.f.read(n)
+  
+  def read_byte(self):
+    return unpack('B', self.read(1))[0]
+
+  def read_int(self):
+    return unpack('<H', self.read(2))[0]
+
+  def read_long(self):
+    return unpack('<I', self.read(4))[0]
+  
+  def read_array(self, word_size, length):
+    if (word_size == 1):
+      read = self.read_byte
+    elif (word_size == 4):
+      read = self.read_long
+    return [read() for _ in range(length)]
+      
+    
+  def debug(self, n):
+    b = self.read(n)
+    print(b)
+    print(b.hex())
+    for byte in b:
+      print(byte)
+
+
+class Rand007:
+  pvalue = [0x62E9,0x7D14,0x1A82,0x02BB,0xE09C]
+  qvalue = [0x3619,0xA26B,0xF03C,0x7B12,0x4E8F]
+
+  def __init__(self, seed):
+    self.seed = seed
+    
+  def next(self, method):
+    seed = self.seed
+    
+    BX = seed >> 8
+    CX = (seed & 0xFF) << 8
+    AL = seed >> 24
+    C = AL >> 7
+    D = BX >> 15
+    AL <<= 1
+    BX = (BX << 1) | C
+    CX = (CX << 1) | D
+    CX += seed & 0xFFFF
+    BX += (seed >> 16) + C
+    #  CX += 0x62E9
+    #  BX += 0x3619 + D
+    CX += self.pvalue[method]
+    BX += self.qvalue[method] + D
+    self.seed = (BX << 16) + CX
+    return (CX << 16) + BX
+
+
+class ZeldaClassicReader:
+  def __init__(self, b):
+    self.b = b
+
+
+  # https://github.com/ArmageddonGames/ZeldaClassic/blob/30c9e17409304390527fcf84f75226826b46b819/src/zq_class.cpp#L11817
+  def read_qst(self):
+    # read the header and decompress the data
+    # https://github.com/ArmageddonGames/ZeldaClassic/blob/023dd17eaf6a969f47650cb6591cedd0baeaab64/src/zsys.cpp#L676
+    preamble = b'Zelda Classic Quest File'
+    assert_equal(preamble, self.b.read(len(preamble)))
+    
+    # TODO use cython
+    raise Exception('not ready')
+    
+    seed = self.b.read_byte() << 24
+    seed += (self.b.read_byte() & 255) << 16
+    seed += (self.b.read_byte() & 255) << 8
+    seed += self.b.read_byte() & 255
+    
+    enc_mask = [0x4C358938,0x91B2A2D1,0x4A7C1B87,0xF93941E6,0xFD095E94]
+    method = len(enc_mask) - 1
+    seed ^= enc_mask[method]
+    
+    tog = 0
+    r = 0
+    c1 = 0
+    c2 = 0
+    rand = Rand007(seed)
+    
+    # read all the encoded data at once
+    encoded = self.b.f.read()
+    
+    # decode
+    decoded = bytearray(len(encoded))
+    i = 0
+    for c in encoded:
+      # print(i)
+      # if i % 100000 == 0:
+      #   print(i / len(encoded) * 100)
+
+      if tog:
+        c -= r
+      else:
+        r = rand.next(method)
+        c ^= r
+      
+      tog ^= 1
+      c &= 255
+      c1 += c
+      c2 = (c2 << 4) + (c2 >> 12) + c
+      
+      decoded[i] = c
+      i += 1
+    
+    # checksums
+    check1 = self.b.read_byte() << 8
+    check1 += self.b.read_byte() & 255 # ?
+    
+    check2 = self.b.read_byte() << 8
+    check2 += self.b.read_byte() & 255 # ?
+    
+    r = rand.next(method)
+    check1 ^= r
+    check2 -= r
+    check1 &= 0xFFFF
+    check2 &= 0xFFFF
+    assert_equal(check1, c1)
+    assert_equal(check2, c2)
+    
+    # remake the byte reader with the decoded data
+    self.b = Bytes(io.BytesIO(decoded))
+    
+    # actually read the file now
+    while self.b.has_bytes():
+      self.read_section()
+
+  # https://github.com/ArmageddonGames/ZeldaClassic/blob/30c9e17409304390527fcf84f75226826b46b819/src/zq_class.cpp#L5414
+  def read_zgp(self):
+    id, version, cversion = self.read_section_header()
+    assert_equal(ID_GRAPHICSPACK, id) 
+
+    while self.b.has_bytes():
+      self.read_section()
+    
+
+  # https://github.com/ArmageddonGames/ZeldaClassic/blob/30c9e17409304390527fcf84f75226826b46b819/src/zq_class.cpp#L6118
+  def read_header(self, version, cversion):
+    pass
+
+
+  def read_section_header(self):
+    id = self.b.read(4)
+    version = self.b.read_int()
+    cversion = self.b.read_int()
+    return (id, version, cversion)
+  
+  
+  def read_section(self):
+    id, version, cversion = self.read_section_header()
+    size = self.b.read_long()
+    print(id, size, version, cversion)
+    
+    bytes_read_start = self.b.bytes_read
+    
+    sections = {
+      ID_HEADER: self.read_header,
+      ID_TILES: self.read_tiles,
+      ID_COMBOS: self.read_combos,
+      ID_CSETS: self.read_csets,
+    }
+        
+    if id in sections:
+      sections[id](version, cversion)
+    else:
+      self.b.read(size)
+      print('unknown section', id)
+    
+    remaining = size - (self.b.bytes_read - bytes_read_start)
+    if remaining != 0:
+      print('section did not consume expected number of bytes. remaining:', remaining)
+      self.b.read(remaining)
+
+  
+  # https://github.com/ArmageddonGames/ZeldaClassic/blob/30c9e17409304390527fcf84f75226826b46b819/src/zdefs.h#L1370
+  # def tfbit_bits(self, tfbit):
+  #   print(tfbit)
+  #   sizes = [-1, 4, 8, 16, 24, 32, -1]
+  #   return sizes[tfbit]
+
+
+  # https://github.com/ArmageddonGames/ZeldaClassic/blob/b56ba20bc6be4a8e4bf01c7c681238d545069baf/src/tiles.cpp#L2579
+  def tilesize(self, format):
+    if format == 5:
+      return 1024
+    if format == 4:
+      return 768
+    if format >= 1 and format <= 3:
+      return 64 << format
+    
+    return 256
+
+  def read_gpak(self, version, cversion):
+    pass
+    
+
+  # https://github.com/ArmageddonGames/ZeldaClassic/blob/30c9e17409304390527fcf84f75226826b46b819/src/zq_class.cpp#L9184
+  def read_tiles(self, version, cversion):
+    if version > 1:
+      tiles_used = self.b.read_long()
+    else:
+      tiles_used = self.b.read_int()
+    
+    num_pixels = 16 * 16
+    tiles = []
+    for _ in range(tiles_used):
+      tile_format = self.b.read_byte()
+      
+      if tile_format == 1:
+        # 1 byte per 2 pixels
+        data_length = int(num_pixels / 2)
+        data = self.b.read_array(1, data_length)
+        pixels = []
+        for val in data:
+          pixels.append(val & 0xF)
+          pixels.append((val >> 4) & 0xF)
+      elif tile_format == 2:
+        # 1 byte per pixel
+        pixels = self.b.read_array(1, num_pixels)
+      else:
+        raise Exception(f'unexpected format {tile_format}')
+      
+      tiles.append(pixels)
+    
+    self.tiles = tiles
+
+  
+  # https://github.com/ArmageddonGames/ZeldaClassic/blob/30c9e17409304390527fcf84f75226826b46b819/src/zq_class.cpp#L9184
+  def read_combos(self, version, cversion):
+    all_descriptors = [
+      # TODO: determine which versions each key was added in.
+      {'version': 0, 'key': 'tile', 'read': lambda: self.b.read_long() if version >= 11 else self.b.read_int()},
+      {'version': 0, 'key': 'flip', 'read': lambda: self.b.read_byte()},
+      {'version': 0, 'key': 'walk', 'read': lambda: self.b.read_byte()},
+      {'version': 0, 'key': 'type', 'read': lambda: self.b.read_byte()},
+      {'version': 0, 'key': 'csets', 'read': lambda: self.b.read_byte()},
+      {'version': 0, 'key': 'frames', 'read': lambda: self.b.read_byte()},
+      {'version': 0, 'key': 'speed', 'read': lambda: self.b.read_byte()},
+      {'version': 0, 'key': 'nextcombo', 'read': lambda: self.b.read_int()},
+      {'version': 0, 'key': 'nextcset', 'read': lambda: self.b.read_byte()},
+      {'version': 0, 'key': 'flag', 'read': lambda: self.b.read_byte()},
+      {'version': 0, 'key': 'skipanim', 'read': lambda: self.b.read_byte()},
+      {'version': 0, 'key': 'nexttimer', 'read': lambda: self.b.read_int()},
+      {'version': 0, 'key': 'skipanimy', 'read': lambda: self.b.read_byte()},
+      {'version': 0, 'key': 'animflags', 'read': lambda: self.b.read_byte()},
+      # Not tested.
+      # {'version': 0, 'key': 'attributes', 'read': lambda: self.b.read_array(4, NUM_COMBO_ATTRIBUTES)},
+      # {'version': 0, 'key': 'usrflags', 'read': lambda: self.b.read_long()},
+      # {'version': 0, 'key': 'triggerflags', 'read': lambda: self.b.read_array(4, 3)},
+      # {'version': 12, 'key': 'triggerlevel', 'read': lambda: self.b.read_long()},
+    ]
+    descriptors = [x for x in all_descriptors if version >= x['version']]
+    
+    combos = []
+    num_combos = self.b.read_int()
+    for _ in range(num_combos):
+      combo = {}
+      for descriptor in descriptors:
+        combo[descriptor['key']] = descriptor['read']()
+      combos.append(combo)
+    
+    self.combos = combos
+  
+  # https://github.com/ArmageddonGames/ZeldaClassic/blob/30c9e17409304390527fcf84f75226826b46b819/src/zq_class.cpp#L8880
+  def read_csets(self, version, cversion):
+    ## TODO: github source doesn't go back far enough
+    return
+    
+    # https://github.com/ArmageddonGames/ZeldaClassic/blob/0fddc19a02ccf62c468d9201dd54dcb834b764ca/src/colors.h#L47
+    newerpsTOTAL = (6701<<4)*3
+    MAXLEVELS = 512
+    PALNAMESIZE = 17
+    palnames_length = MAXLEVELS * PALNAMESIZE
+    
+    color_data = self.b.read(newerpsTOTAL)
+    palnames = self.b.read(palnames_length)
+    palcycles = self.b.read_int()
+    
+    cycles = []
+    for _ in range(palcycles):
+      cycles.push({
+        'first': self.b.read_array(1, 4),
+        'count': self.b.read_array(1, 4),
+        'speed': self.b.read_array(1, 4),
+      })
+
+
+# path = sys.argv[1]
+# with open(path, "rb") as f:
+#   b = Bytes(f)
+#   r = ZeldaClassicReader(b)
+#   if path.endswith('.qst'):
+#     r.read_qst()
+#   else:
+#     r.read_zgp()
+
+#   print('num tiles', len(r.tiles))
+#   print('num combos', len(r.combos))
+  
+#   # save 400 at a time
+#   num_sprites_to_render_side = 20  
+#   img = Image.new('RGB', (num_sprites_to_render_side*16,num_sprites_to_render_side*16))
+#   pixels = img.load() 
+#   for tile_index in range(num_sprites_to_render_side*num_sprites_to_render_side):
+#     tile = r.tiles[tile_index]
+#     spritesheet_x = (tile_index % num_sprites_to_render_side) * 16
+#     spritesheet_y = int(tile_index / num_sprites_to_render_side) * 16
+    
+#     for tx in range(16):
+#       for ty in range(16):
+#         tile_offset = tx + ty * 16
+#         color_index = tile[tile_offset]
+#         color = int(color_index / 25 * 256)
+        
+#         x = spritesheet_x + tx
+#         y = spritesheet_y + ty
+#         pixels[x,y] = (color, color, color)
+      
+#   img.show()
