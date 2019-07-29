@@ -2,6 +2,7 @@ from struct import *
 import sys
 import math
 from PIL import Image
+from decode_wrapper import *
 
 # https://github.com/ArmageddonGames/ZeldaClassic/blob/30c9e17409304390527fcf84f75226826b46b819/src/zdefs.h#L155
 ID_HEADER = b'HDR '
@@ -132,34 +133,6 @@ class Bytes:
       print(byte)
 
 
-class Rand007:
-  pvalue = [0x62E9,0x7D14,0x1A82,0x02BB,0xE09C]
-  qvalue = [0x3619,0xA26B,0xF03C,0x7B12,0x4E8F]
-
-  def __init__(self, seed):
-    self.seed = seed
-    
-  def next(self, method):
-    seed = self.seed
-    
-    BX = seed >> 8
-    CX = (seed & 0xFF) << 8
-    AL = seed >> 24
-    C = AL >> 7
-    D = BX >> 15
-    AL <<= 1
-    BX = (BX << 1) | C
-    CX = (CX << 1) | D
-    CX += seed & 0xFFFF
-    BX += (seed >> 16) + C
-    #  CX += 0x62E9
-    #  BX += 0x3619 + D
-    CX += self.pvalue[method]
-    BX += self.qvalue[method] + D
-    self.seed = (BX << 16) + CX
-    return (CX << 16) + BX
-
-
 class ZeldaClassicReader:
   def __init__(self, b):
     self.b = b
@@ -171,64 +144,71 @@ class ZeldaClassicReader:
     # https://github.com/ArmageddonGames/ZeldaClassic/blob/023dd17eaf6a969f47650cb6591cedd0baeaab64/src/zsys.cpp#L676
     preamble = b'Zelda Classic Quest File'
     assert_equal(preamble, self.b.read(len(preamble)))
-    
-    # TODO use cython
-    raise Exception('not ready')
-    
-    seed = self.b.read_byte() << 24
-    seed += (self.b.read_byte() & 255) << 16
-    seed += (self.b.read_byte() & 255) << 8
-    seed += self.b.read_byte() & 255
-    
+
     enc_mask = [0x4C358938,0x91B2A2D1,0x4A7C1B87,0xF93941E6,0xFD095E94]
     method = len(enc_mask) - 1
-    seed ^= enc_mask[method]
+    rest_of_data = self.b.f.read()
+    # minus 8 bytes for seed and checksum
+    decoded = bytearray(len(rest_of_data) - 4 - 4)
+    err = py_decode_file_007(rest_of_data, decoded, len(rest_of_data), method)
+    assert_equal(0, err)
     
-    tog = 0
-    r = 0
-    c1 = 0
-    c2 = 0
-    rand = Rand007(seed)
+    # seed = np.int32(self.b.read_byte() << 24)
+    # seed += np.int8(self.b.read_byte() & 255) << np.int32(16)
+    # seed += np.int8(self.b.read_byte() & 255) << np.int32(8)
+    # seed += np.int8(self.b.read_byte() & 255)
     
-    # read all the encoded data at once
-    encoded = self.b.f.read()
+    # enc_mask = [np.int32(x) for x in [0x4C358938,0x91B2A2D1,0x4A7C1B87,0xF93941E6,0xFD095E94]]
+    # method = len(enc_mask) - 1
+    # seed ^= enc_mask[method]
     
-    # decode
-    decoded = bytearray(len(encoded))
-    i = 0
-    for c in encoded:
-      # print(i)
-      # if i % 100000 == 0:
-      #   print(i / len(encoded) * 100)
+    # tog = np.int32(0)
+    # r = np.int32(0)
+    # c1 = np.int16(0)
+    # c2 = np.int16(0)
+    # rand = Rand007_2(seed)
+    
+    # # read all the encoded data at once
+    # rest_of_data = self.b.f.read()
+    # # last 4 bytes are checksum
+    # encoded, checksum = rest_of_data[:len(rest_of_data)-4], rest_of_data[len(rest_of_data)-4:]
+    
+    # # decode
+    # decoded = bytearray(len(encoded))
+    # i = 0
+    # for c in encoded:
+    #   c = np.int8(c)
+    #   if i % 100000 == 0:
+    #     print(i / len(encoded) * 100)
 
-      if tog:
-        c -= r
-      else:
-        r = rand.next(method)
-        c ^= r
+    #   if tog:
+    #     c -= np.int8(r)
+    #   else:
+    #     r = rand.next(method)
+    #     c ^= np.int8(r)
       
-      tog ^= 1
-      c &= 255
-      c1 += c
-      c2 = (c2 << 4) + (c2 >> 12) + c
+    #   tog ^= np.int32(1)
+    #   c &= np.int8(255)
+    #   c1 += c
+    #   c2 = (c2 << np.int16(4)) + (c2 >> np.int32(12)) + c
       
-      decoded[i] = c
-      i += 1
+    #   decoded[i] = c + 128
+    #   i += 1
     
-    # checksums
-    check1 = self.b.read_byte() << 8
-    check1 += self.b.read_byte() & 255 # ?
+    # # checksums
+    # check1 = np.int16(checksum[0]) << np.int16(8)
+    # check1 += np.int16(checksum[1] & 255)
     
-    check2 = self.b.read_byte() << 8
-    check2 += self.b.read_byte() & 255 # ?
+    # check2 = np.int16(checksum[2]) << np.int16(8)
+    # check2 += np.int16(checksum[3] & 255)
     
-    r = rand.next(method)
-    check1 ^= r
-    check2 -= r
-    check1 &= 0xFFFF
-    check2 &= 0xFFFF
-    assert_equal(check1, c1)
-    assert_equal(check2, c2)
+    # r = rand.next(method)
+    # check1 ^= np.int16(r)
+    # check2 -= np.int16(r)
+    # check1 &= np.int16(0xFFFF)
+    # check2 &= np.int16(0xFFFF)
+    # assert_equal(check1, c1)
+    # assert_equal(check2, c2)
     
     # remake the byte reader with the decoded data
     self.b = Bytes(io.BytesIO(decoded))

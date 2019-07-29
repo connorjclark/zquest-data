@@ -1,3 +1,5 @@
 __pycache__
-*.c
+src/*.c
+*.a
+*.o
 build
