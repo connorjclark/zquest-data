@@ -1,25 +1,25 @@
 // https://github.com/ArmageddonGames/ZeldaClassic/blob/023dd17eaf6a969f47650cb6591cedd0baeaab64/src/zsys.cpp
 
 #include <stdio.h>
+// #include <allegro.h>
+#include <allegro/file.h>
 
 #define EOF    (-1)
 static const int ENC_METHOD_MAX = 5;
 
-//#define MASK 0x4C358938
-static int seed = 0;
-//#define MASK 0x91B2A2D1
-//static int seed = 7351962;
-static int enc_mask[ENC_METHOD_MAX]= {0x4C358938,0x91B2A2D1,0x4A7C1B87,0xF93941E6,0xFD095E94};
-static int pvalue[ENC_METHOD_MAX]= {0x62E9,0x7D14,0x1A82,0x02BB,0xE09C};
-static int qvalue[ENC_METHOD_MAX]= {0x3619,0xA26B,0xF03C,0x7B12,0x4E8F};
+static int32_t seed = 0;
+static int32_t enc_mask[ENC_METHOD_MAX]= {0x4C358938,0x91B2A2D1,0x4A7C1B87,0xF93941E6,0xFD095E94};
+static int32_t pvalue[ENC_METHOD_MAX]= {0x62E9,0x7D14,0x1A82,0x02BB,0xE09C};
+static int32_t qvalue[ENC_METHOD_MAX]= {0x3619,0xA26B,0xF03C,0x7B12,0x4E8F};
+static char datapwd[8]   = { ('l'+11),('o'+22),('n'+33),('g'+44),('t'+55),('a'+66),('n'+77),(0+88) };
 
 int rand_007(int method)
 {
-    short BX = seed >> 8;
-    short CX = (seed & 0xFF) << 8;
-    signed char AL = seed >> 24;
-    signed char C = AL >> 7;
-    signed char D = BX >> 15;
+    int16_t BX = seed >> 8;
+    int16_t CX = (seed & 0xFF) << 8;
+    int8_t AL = seed >> 24;
+    int8_t C = AL >> 7;
+    int8_t D = BX >> 15;
     AL <<= 1;
     BX = (BX << 1) | C;
     CX = (CX << 1) | D;
@@ -33,26 +33,24 @@ int rand_007(int method)
     return (CX << 16) + BX;
 }
 
-int decode_file_007(const char *data, char *output, long size, int method)
+int decode_file_007(const char *data, char *output_file, long size, int32_t method)
 {
     // declare some stuff to make the following code go mostly unchanged
-    int packed = 1;
+    const char* header = "Zelda Classic Quest File";
+    int32_t packed = 0;
     FILE* normal_src = fmemopen((void*)data, size, "r");
-    size_t outsize;
-    FILE* dest = open_memstream (&output, &outsize);
-    printf("size %ld\n", size);
+    FILE* dest = fopen(output_file, "r");
 
-    int tog = 0, c=0, r=0, err;
-    long i;
-    short c1 = 0, c2 = 0, check1, check2;
+    int32_t tog = 0, c = 0, r = 0, err = 0;
+    long i = 0;
+    int16_t c1 = 0, c2 = 0, check1 = 0, check2 = 0;
    
     if(size < 1)
     {
         return 1;
     }
     
-    // already do this in python
-    // size -= 8;                                                // get actual data size, minus key and checksums
+    size -= 8;                                                // get actual data size, minus key and checksums
     
     if(size < 1)
     {
@@ -102,35 +100,35 @@ int decode_file_007(const char *data, char *output, long size, int method)
     // read the header
     err = 4;
     
-    // Header is handled in python.
-    // if(header)
-    // {
-    //     for(i=0; header[i]; i++)
-    //     {
-    //         if(packed)
-    //         {
-    //             // if((c=pack_getc(packed_src)) == EOF)
-    //             // {
-    //             //     goto error;
-    //             // }
-    //         }
-    //         else
-    //         {
-    //             if((c=fgetc(normal_src)) == EOF)
-    //             {
-    //                 goto error;
-    //             }
-    //         }
+    if(header)
+    {
+        for(i=0; header[i]; i++)
+        {
+            if(packed)
+            {
+                // if((c=pack_getc(packed_src)) == EOF)
+                // {
+                //     goto error;
+                // }
+            }
+            else
+            {
+                if((c=fgetc(normal_src)) == EOF)
+                {
+                    goto error;
+                }
+            }
             
-    //         if((c&255) != header[i])
-    //         {
-    //             err = 6;
-    //             goto error;
-    //         }
+            printf("c = %d %c\n", c, c);
+            if((c&255) != header[i])
+            {
+                err = 6;
+                goto error;
+            }
             
-    //         --size;
-    //     }
-    // }
+            --size;
+        }
+    }
     
     // read the key
     if(packed)
@@ -203,6 +201,8 @@ int decode_file_007(const char *data, char *output, long size, int method)
     seed ^= enc_mask[method];
     
     // decode the data
+    printf("seed = %d\n", seed);
+    printf("size = %ld\n", size);
     for(i=0; i<size; i++)
     {
         if(packed)
@@ -236,6 +236,7 @@ int decode_file_007(const char *data, char *output, long size, int method)
         c1 += c;
         c2 = (c2 << 4) + (c2 >> 12) + c;
         
+        if (i < 20) printf("c = %d %c\n", c, c);
         fputc(c, dest);
     }
     
@@ -315,6 +316,7 @@ int decode_file_007(const char *data, char *output, long size, int method)
     check1 &= 0xFFFF;
     check2 &= 0xFFFF;
     
+    printf("%d == %d and %d == %d\n", check1, c1, check2, c2);
     if(check1 != c1 || check2 != c2)
     {
         err = 5;
@@ -332,6 +334,7 @@ int decode_file_007(const char *data, char *output, long size, int method)
     
     // fclose(dest);
     // return dest;
+    return 0;
     
 error:
 
@@ -346,6 +349,33 @@ error:
     
     // fclose(dest);
     // delete_file(destfile);
-    printf("outsize %ld\n", outsize);
     return err;
+}
+
+int decode(const char *data, char *output, long size, int32_t method)
+{
+  // Unencrypt the data.
+  char tmpfilename[32];
+  tempname(tmpfilename);
+  int ret = decode_file_007(data, tmpfilename, size, method);
+
+  // Uncompress the data.
+  packfile_password(datapwd);
+  PACKFILE* uncompressed = pack_fopen(tmpfilename, F_READ_PACKED);
+  packfile_password("");
+
+  // Copy from temporary to output buffer.
+  FILE* dest = fmemopen ((void*)output, size - 8, "r");
+  for (int i=0; i<size; i++)
+  {
+      char c;
+      if((c=fgetc(uncompressed)) == EOF)
+      {
+          return 11;
+      }
+      
+      if (i < 20) printf("c = %d %c\n", c, c);
+      fputc(c, dest);
+  }
+  return ret;
 }

@@ -1,5 +1,6 @@
 import sys
 from extract import *
+# from PIL import Image
 
 if __name__ == "__main__":
   path = sys.argv[1]

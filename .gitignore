@@ -3,3 +3,4 @@ src/*.c
 *.a
 *.o
 build
+third_party

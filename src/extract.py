@@ -1,8 +1,8 @@
 from struct import *
 import sys
 import math
-from PIL import Image
 from decode_wrapper import *
+import io
 
 # https://github.com/ArmageddonGames/ZeldaClassic/blob/30c9e17409304390527fcf84f75226826b46b819/src/zdefs.h#L155
 ID_HEADER = b'HDR '
@@ -142,15 +142,23 @@ class ZeldaClassicReader:
   def read_qst(self):
     # read the header and decompress the data
     # https://github.com/ArmageddonGames/ZeldaClassic/blob/023dd17eaf6a969f47650cb6591cedd0baeaab64/src/zsys.cpp#L676
-    preamble = b'Zelda Classic Quest File'
-    assert_equal(preamble, self.b.read(len(preamble)))
+    # preamble = b'Zelda Classic Quest File'
+    # assert_equal(preamble, self.b.read(len(preamble)))
 
-    enc_mask = [0x4C358938,0x91B2A2D1,0x4A7C1B87,0xF93941E6,0xFD095E94]
-    method = len(enc_mask) - 1
     rest_of_data = self.b.f.read()
     # minus 8 bytes for seed and checksum
     decoded = bytearray(len(rest_of_data) - 4 - 4)
-    err = py_decode_file_007(rest_of_data, decoded, len(rest_of_data), method)
+
+    for method in reversed(range(5)):
+      err = py_decode(rest_of_data, decoded, len(rest_of_data), method)
+      if err == 5:
+        # decoding error, try with a different method.
+        continue
+      else:
+        break
+    
+    print(decoded[0], decoded[1], decoded[2], decoded[3])
+    print(decoded[0:100])
     assert_equal(0, err)
     
     # seed = np.int32(self.b.read_byte() << 24)
@@ -375,37 +383,3 @@ class ZeldaClassicReader:
         'count': self.b.read_array(1, 4),
         'speed': self.b.read_array(1, 4),
       })
-
-
-# path = sys.argv[1]
-# with open(path, "rb") as f:
-#   b = Bytes(f)
-#   r = ZeldaClassicReader(b)
-#   if path.endswith('.qst'):
-#     r.read_qst()
-#   else:
-#     r.read_zgp()
-
-#   print('num tiles', len(r.tiles))
-#   print('num combos', len(r.combos))
-  
-#   # save 400 at a time
-#   num_sprites_to_render_side = 20  
-#   img = Image.new('RGB', (num_sprites_to_render_side*16,num_sprites_to_render_side*16))
-#   pixels = img.load() 
-#   for tile_index in range(num_sprites_to_render_side*num_sprites_to_render_side):
-#     tile = r.tiles[tile_index]
-#     spritesheet_x = (tile_index % num_sprites_to_render_side) * 16
-#     spritesheet_y = int(tile_index / num_sprites_to_render_side) * 16
-    
-#     for tx in range(16):
-#       for ty in range(16):
-#         tile_offset = tx + ty * 16
-#         color_index = tile[tile_offset]
-#         color = int(color_index / 25 * 256)
-        
-#         x = spritesheet_x + tx
-#         y = spritesheet_y + ty
-#         pixels[x,y] = (color, color, color)
-      
-#   img.show()
