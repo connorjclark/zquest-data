@@ -3,6 +3,7 @@ import sys
 import math
 from decode_wrapper import *
 import io
+import numpy as np
 
 # https://github.com/ArmageddonGames/ZeldaClassic/blob/30c9e17409304390527fcf84f75226826b46b819/src/zdefs.h#L155
 ID_HEADER = b'HDR '
@@ -146,16 +147,15 @@ class ZeldaClassicReader:
     # assert_equal(preamble, self.b.read(len(preamble)))
 
     rest_of_data = self.b.f.read()
-    # minus 8 bytes for seed and checksum
-    decoded = bytearray(len(rest_of_data) - 4 - 4)
-
     for method in reversed(range(5)):
-      err = py_decode(rest_of_data, decoded, len(rest_of_data), method)
-      if err == 5:
+      err, decoded = py_decode(rest_of_data, len(rest_of_data), method)
+      if err == 0:
+        break
+      elif err == 5:
         # decoding error, try with a different method.
         continue
       else:
-        break
+        raise Exception(f'error decoding: {err}')
     
     print(decoded[0], decoded[1], decoded[2], decoded[3])
     print(decoded[0:100])

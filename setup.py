@@ -31,14 +31,14 @@ from Cython.Build import cythonize
 
 decode_extension = Extension(
   name='decode_wrapper',
-  sources=['src/decode_wrapper.pyx', 'lib/file.c', 'third_party/allegro/src/unicode.c', 'third_party/allegro/src/libc.c', 'third_party/allegro/src/lzss.c', 'lib/al_file.c'],
+  sources=['src/decode_wrapper.pyx'],
   include_dirs=['lib', 'third_party/allegro/include'],
   # includes=["third_party/allegro/include/allegro/platform/almac.h"],
   # extra_compile_args=[f'-include{x}' for x in allegro_includes]
   # extra_compile_args=['-undefined dynamic_lookup'],
-  # libraries=['allegro4_file'],
-  # library_dirs=['third_party/allegro'],
-  # extra_objects=["third_party/allegro/allegro4_file.a"]
+  libraries=['alleg'],
+  # library_dirs=['/usr/local/lib'],
+  # extra_objects=["third_party/allegro/lib/liballeg.so.4.4.3"]
 )
 setup(
   name='decode_wrapper',
