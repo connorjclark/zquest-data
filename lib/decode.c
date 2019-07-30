@@ -236,7 +236,7 @@ int decode_file_007(const char *data, char *output_file, long size, int32_t meth
         c1 += c;
         c2 = (c2 << 4) + (c2 >> 12) + c;
         
-        if (i < 20) printf("c = %d %c\n", c, c);
+        // if (i < 20) printf("c = %d %c\n", c, c);
         fputc(c, dest);
     }
     
@@ -332,7 +332,7 @@ int decode_file_007(const char *data, char *output_file, long size, int32_t meth
     //     fclose(normal_src);
     // }
     
-    // fclose(dest);
+    fclose(dest);
     // return dest;
     return 0;
     
@@ -347,7 +347,7 @@ error:
     //     fclose(normal_src);
     // }
     
-    // fclose(dest);
+    fclose(dest);
     // delete_file(destfile);
     return err;
 }
@@ -355,8 +355,8 @@ error:
 int decode(const char *data, char *output, long size, int32_t method)
 {
   // Unencrypt the data.
-  char tmpfilename[32];
-  tempname(tmpfilename);
+  char tmpfilename[] = "/tmp/fileXXXXXX";
+  mkstemp(tmpfilename);
   int ret = decode_file_007(data, tmpfilename, size, method);
 
   // Uncompress the data.
@@ -364,6 +364,8 @@ int decode(const char *data, char *output, long size, int32_t method)
   PACKFILE* uncompressed = pack_fopen(tmpfilename, F_READ_PACKED);
   packfile_password("");
 
+  printf("4\n");
+  return 0;
   // Copy from temporary to output buffer.
   FILE* dest = fmemopen ((void*)output, size - 8, "r");
   for (int i=0; i<size; i++)
