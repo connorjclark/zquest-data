@@ -3,13 +3,8 @@ WORKDIR /zquest
 
 RUN apt-get update && apt-get -y install cmake
 
-RUN mkdir third_party && \
-  git clone --branch 4.4.3.1 https://github.com/liballeg/allegro5.git third_party/allegro && \
-	cd third_party/allegro && \
-  cmake . && \
-  make && \
-  make install && \
-  ldconfig
+COPY Makefile Makefile
+RUN make allegro
 
 COPY requirements.txt .
 RUN pip install -r requirements.txt
@@ -19,7 +14,8 @@ COPY setup.py setup.py
 COPY lib lib
 COPY src src
 
-RUN python3 setup.py install
+RUN make cython
 
 ENTRYPOINT ["python"]
-CMD ["src/main.py", "test_data/lost_isle.qst"]
+CMD ["src/main.py", "test_data/Vintage Dreams Tileset v0.1.1.qst"]
+# CMD ["src/main.py", "test_data/lost_isle.qst"]

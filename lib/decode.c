@@ -34,8 +34,6 @@ int rand_007(int method)
 }
 
 PACKFILE *pack_fopen_password(const char *filename, const char *mode, const char *password) {
-  printf("pw %s\n", password);
-  printf("filename %s\n", filename);
 	packfile_password(password);
 	PACKFILE *new_pf = pack_fopen(filename, mode);
 	packfile_password("");
@@ -85,9 +83,7 @@ int decode_file_007(const char *srcfile, const char *destfile, const char *heade
   }
   else
   {
-    printf("1..\n");
     packed_src = pack_fopen_password(srcfile, F_READ_PACKED, password);
-    printf("2..\n");
 
     if (errno == EDOM)
     {
@@ -100,8 +96,6 @@ int decode_file_007(const char *srcfile, const char *destfile, const char *heade
     }
   }
 
-  printf("?1\n");
-  printf("DESTFILE %s\n", destfile);
   dest = fopen(destfile, "wb");
 
   if (!dest)
@@ -254,16 +248,8 @@ int decode_file_007(const char *srcfile, const char *destfile, const char *heade
     c &= 255;
     c1 += c;
     c2 = (c2 << 4) + (c2 >> 12) + c;
-
-    // if (i < 20) printf("read %c\n", c);
-    // if (i % 100 == 0) printf("i = %ld c = %c\n", i, c);
-    int ec = fputc(c, dest);
-    if (ec == EOF) {
-      printf("err at i = %ld\n", i);
-      printf("errno fgetc(dest): %d\n", errno);
-      printf("ferror fgetc(dest): %d\n", ferror(dest));
-      return 100;
-    }
+    if (i % 100 == 0) printf("i = %ld c = %c\n", i, c);
+    fputc(c, dest);
   }
 
   // read checksums
@@ -378,6 +364,9 @@ error:
 
 int decode(const char *data, char *output, long size, int32_t method)
 {
+  // First, unencrypt the data using `decode_file_007`, storing the result
+  // on disk at `destfname` (use the filesystem so that the original decoding
+  // function doesn't have to change at all).
   const char *header = "Zelda Classic Quest File";
 
   char srcfname[] = "/tmp/fileXXXXXX";
@@ -393,22 +382,30 @@ int decode(const char *data, char *output, long size, int32_t method)
   mkstemp(destfname);
   fclose(fopen(destfname , "w"));
   
-  printf("start.... %s %s\n", srcfname, destfname);
-  int ret = decode_file_007(srcfname, destfname, header, method, !true, datapwd);
+  printf("decode_file_007(%s, %s)\n", srcfname, destfname);
+  int ret = decode_file_007(srcfname, destfname, header, method, false, datapwd);
   if (ret != 0)
   {
     printf("err decode_file_007: %d\n", ret);
     return ret;
   }
 
+  // FILE *tmp = fopen(destfname, "r");
+  // fclose(tmp);
+
+  // Second, decompress.
+  printf("1\n");
+  PACKFILE *decoded = pack_fopen_password(destfname, F_READ_PACKED, "");
+  printf("2\n");
+
   // Copy from temporary to output buffer.
-  FILE *decoded = fopen(destfname, "rb");
+  // FILE *decoded = fopen(destfname, "rb");
   FILE *dest = fmemopen((void *)output, size - 8, "w");
   printf("size = %ld\n", size);
   for (int i = 0; i < size; i++)
   {
     char c;
-    if ((c = fgetc(decoded)) == EOF)
+    if ((c = pack_getc(decoded)) == EOF)
     {
       // printf("errno fgetc(decoded): %d\n", errno);
       // printf("ferror fgetc(decoded): %d\n", ferror(decoded));
@@ -416,12 +413,11 @@ int decode(const char *data, char *output, long size, int32_t method)
       // return 11;
     }
 
-    // if (i > 880)
-    //   printf("c = %d %c\n", c, c);
+    if (i < 20)
+      printf("c = %d %c\n", c, c);
     // if (i > 880) printf("i = %d\n", i);
     fputc(c, dest);
   }
-  fclose(decoded);
-  // output[2] = 'a';
+  pack_fclose(decoded);
   return ret;
 }
