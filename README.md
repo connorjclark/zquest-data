@@ -6,9 +6,9 @@ I've only tested this on OSX.
 
 ## Installing
 
-1. Checkout this repo.
-1. `make`
-1. Make sure you have installed allegro. `brew install allegro`
+1. Checkout this repo
+1. Install Docker
+1. `make docker`
 
 ## Development Notes
 

@@ -13,6 +13,12 @@ static int32_t pvalue[ENC_METHOD_MAX] = {0x62E9, 0x7D14, 0x1A82, 0x02BB, 0xE09C}
 static int32_t qvalue[ENC_METHOD_MAX] = {0x3619, 0xA26B, 0xF03C, 0x7B12, 0x4E8F};
 static char datapwd[8] = {('l' + 11), ('o' + 22), ('n' + 33), ('g' + 44), ('t' + 55), ('a' + 66), ('n' + 77), (0 + 88)};
 
+void resolve_password(char *pwd)
+{
+  for(int i=0; i<8; i++)
+    pwd[i]-=(i+1)*11;
+}
+
 int rand_007(int method)
 {
   int16_t BX = seed >> 8;
@@ -34,6 +40,7 @@ int rand_007(int method)
 }
 
 PACKFILE *pack_fopen_password(const char *filename, const char *mode, const char *password) {
+  resolve_password(datapwd);
 	packfile_password(password);
 	PACKFILE *new_pf = pack_fopen(filename, mode);
 	packfile_password("");
@@ -390,13 +397,8 @@ int decode(const char *data, char *output, long size, int32_t method)
     return ret;
   }
 
-  // FILE *tmp = fopen(destfname, "r");
-  // fclose(tmp);
-
   // Second, decompress.
-  printf("1\n");
-  PACKFILE *decoded = pack_fopen_password(destfname, F_READ_PACKED, "");
-  printf("2\n");
+  PACKFILE *decoded = pack_fopen_password(destfname, F_READ_PACKED, datapwd);
 
   // Copy from temporary to output buffer.
   // FILE *decoded = fopen(destfname, "rb");

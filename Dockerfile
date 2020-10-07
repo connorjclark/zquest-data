@@ -17,5 +17,6 @@ COPY src src
 RUN make cython
 
 ENTRYPOINT ["python"]
-CMD ["src/main.py", "test_data/Vintage Dreams Tileset v0.1.1.qst"]
-# CMD ["src/main.py", "test_data/lost_isle.qst"]
+# CMD ["src/main.py", "test_data/1st.qst"]
+# CMD ["src/main.py", "test_data/Vintage Dreams Tileset v0.1.1.qst"]
+CMD ["src/main.py", "test_data/lost_isle.qst"]

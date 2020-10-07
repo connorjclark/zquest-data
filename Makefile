@@ -2,7 +2,7 @@ clean:
 	git clean -fXd
 
 docker:
-	docker build -t zquest-data . && docker run -it zquest-data
+	docker build -t zquest-data . && docker run -v $$PWD/output:/zquest/output -it zquest-data
 
 cython:
 	python3 setup.py install

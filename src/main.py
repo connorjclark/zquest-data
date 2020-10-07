@@ -1,6 +1,6 @@
 import sys
 from extract import *
-# from PIL import Image
+from PIL import Image
 
 if __name__ == "__main__":
   path = sys.argv[1]
@@ -18,7 +18,7 @@ if __name__ == "__main__":
     # save 400 at a time
     num_sprites_to_render_side = 20  
     img = Image.new('RGB', (num_sprites_to_render_side*16,num_sprites_to_render_side*16))
-    pixels = img.load() 
+    pixels = img.load()
     for tile_index in range(num_sprites_to_render_side*num_sprites_to_render_side):
       tile = r.tiles[tile_index]
       spritesheet_x = (tile_index % num_sprites_to_render_side) * 16
@@ -33,5 +33,4 @@ if __name__ == "__main__":
           x = spritesheet_x + tx
           y = spritesheet_y + ty
           pixels[x,y] = (color, color, color)
-        
-    img.show()
+    img.save('output/tmp.png')

@@ -106,6 +106,9 @@ class Bytes:
     return more_bytes
   
   def read(self, n):
+    if n == 0:
+      return []
+
     self.bytes_read += n
     return self.f.read(n)
   
@@ -124,14 +127,18 @@ class Bytes:
     elif (word_size == 4):
       read = self.read_long
     return [read() for _ in range(length)]
-      
-    
+  
+  def read_str(self, n):
+    return bytes(self.read(n))
+
   def debug(self, n):
     b = self.read(n)
+    print('DEBUG')
     print(b)
     print(b.hex())
     for byte in b:
       print(byte)
+    self.f.seek(-n, 1)
 
 
 class ZeldaClassicReader:
@@ -143,7 +150,12 @@ class ZeldaClassicReader:
   def read_qst(self):
     # read the header and decompress the data
     # https://github.com/ArmageddonGames/ZeldaClassic/blob/023dd17eaf6a969f47650cb6591cedd0baeaab64/src/zsys.cpp#L676
-    # preamble = b'Zelda Classic Quest File'
+
+    # preambles = [
+    #   b'AG Zelda Classic Quest File',
+    #   b'AG ZC Enhanced Quest File',
+    #   b'Zelda Classic Quest File',
+    # ]
     # assert_equal(preamble, self.b.read(len(preamble)))
 
     rest_of_data = self.b.f.read()
@@ -157,8 +169,8 @@ class ZeldaClassicReader:
       else:
         raise Exception(f'error decoding: {err}')
     
-    print(decoded[0], decoded[1], decoded[2], decoded[3])
-    print(decoded[0:100])
+    # print(decoded[0], decoded[1], decoded[2], decoded[3])
+    # print(decoded[0:120])
     assert_equal(0, err)
     
     # seed = np.int32(self.b.read_byte() << 24)
@@ -217,10 +229,11 @@ class ZeldaClassicReader:
     # check2 &= np.int16(0xFFFF)
     # assert_equal(check1, c1)
     # assert_equal(check2, c2)
-    
+
     # remake the byte reader with the decoded data
-    self.b = Bytes(io.BytesIO(decoded))
-    
+    header_start = decoded.find(b"HDR")
+    self.b = Bytes(io.BytesIO(decoded[header_start:]))
+
     # actually read the file now
     while self.b.has_bytes():
       self.read_section()
@@ -234,9 +247,31 @@ class ZeldaClassicReader:
       self.read_section()
     
 
-  # https://github.com/ArmageddonGames/ZeldaClassic/blob/30c9e17409304390527fcf84f75226826b46b819/src/zq_class.cpp#L6118
+  # https://github.com/ArmageddonGames/ZeldaClassic/blob/bdac8e682ac1eda23d775dacc5e5e34b237b82c0/src/zq_class.cpp#L6189
+  # https://github.com/ArmageddonGames/ZeldaClassic/blob/20f9807a8e268172d0bd2b0461e417f1588b3882/src/qst.cpp#L2005
+  # zdefs.h
   def read_header(self, version, cversion):
-    pass
+    # p_iputw = 2 bytes = b.read_int()
+
+    version = self.b.read_int()
+    build = self.b.read_byte()
+    pw_hash = self.b.read_str(16)
+    internal = self.b.read_int()
+    quest_number = self.b.read_byte()
+    version = self.b.read_str(9)
+    min_version = self.b.read_str(9)
+    title = self.b.read_str(65)
+    author = self.b.read_str(65)
+    use_keyfile = self.b.read_byte()
+
+    # ...
+
+    print('internal', internal)
+    print('quest_number', quest_number)
+    print('version', version)
+    print('min_version', min_version)
+    print('title', title)
+    print('author', author)
 
 
   def read_section_header(self):
@@ -249,8 +284,8 @@ class ZeldaClassicReader:
   def read_section(self):
     id, version, cversion = self.read_section_header()
     size = self.b.read_long()
-    print(id, size, version, cversion)
-    
+    print('read_section', id, size, version, cversion)
+
     bytes_read_start = self.b.bytes_read
     
     sections = {
@@ -259,7 +294,7 @@ class ZeldaClassicReader:
       ID_COMBOS: self.read_combos,
       ID_CSETS: self.read_csets,
     }
-        
+
     if id in sections:
       sections[id](version, cversion)
     else:
@@ -292,7 +327,7 @@ class ZeldaClassicReader:
 
   def read_gpak(self, version, cversion):
     pass
-    
+
 
   # https://github.com/ArmageddonGames/ZeldaClassic/blob/30c9e17409304390527fcf84f75226826b46b819/src/zq_class.cpp#L9184
   def read_tiles(self, version, cversion):
@@ -300,13 +335,15 @@ class ZeldaClassicReader:
       tiles_used = self.b.read_long()
     else:
       tiles_used = self.b.read_int()
-    
+
     num_pixels = 16 * 16
     tiles = []
     for _ in range(tiles_used):
       tile_format = self.b.read_byte()
-      
-      if tile_format == 1:
+
+      if tile_format == 0:
+        break
+      elif tile_format == 1:
         # 1 byte per 2 pixels
         data_length = int(num_pixels / 2)
         data = self.b.read_array(1, data_length)
