@@ -30,14 +30,14 @@ if __name__ == "__main__":
     while tile_index < len(reader.tiles):
       img = Image.new('RGB', (tiles_per_row * sprite_size, rows_per_page * sprite_size))
       pixels = img.load()
-      for tile_index_offset in range(tiles_per_row * rows_per_page):
-        index = tile_index + tile_index_offset
-        if index >= len(reader.tiles):
+      for index_in_page in range(tiles_per_row * rows_per_page):
+        tile_index += 1
+        if tile_index >= len(reader.tiles):
           break
 
-        tile = reader.tiles[index]
-        spritesheet_x = (tile_index_offset % tiles_per_row) * sprite_size
-        spritesheet_y = int(tile_index_offset / tiles_per_row) * sprite_size
+        tile = reader.tiles[tile_index]
+        spritesheet_x = (index_in_page % tiles_per_row) * sprite_size
+        spritesheet_y = int(index_in_page / tiles_per_row) * sprite_size
 
         for tx in range(sprite_size):
           for ty in range(sprite_size):
@@ -53,8 +53,6 @@ if __name__ == "__main__":
             x = spritesheet_x + tx
             y = spritesheet_y + ty
             pixels[x,y] = (r, g, b)
-        
-        tile_index += 1
 
       img.save(f'output/tiles_{page_index}.png')
       page_index += 1
