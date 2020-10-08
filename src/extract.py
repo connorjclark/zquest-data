@@ -1,7 +1,9 @@
 from struct import *
 import sys
+import json
 import math
 from decode_wrapper import *
+from pretty_json import *
 import io
 import numpy as np
 
@@ -129,7 +131,12 @@ class Bytes:
     return [read() for _ in range(length)]
   
   def read_str(self, n):
-    return bytes(self.read(n)).rstrip(b'\x00')
+    raw = self.read(n)
+    try:
+      return raw.rstrip(b'\x00').decode('utf-8')
+    except:
+      # :/
+      return str(raw.rstrip(b'\x00'))
 
   def debug(self, n):
     b = self.read(n)
@@ -409,7 +416,7 @@ class ZeldaClassicReader:
 
     palnames = []
     for _ in range(MAXLEVELS):
-      palnames.append((self.b.read_str(PALNAMESIZE)))
+      palnames.append(self.b.read_str(PALNAMESIZE))
 
     palcycles = self.b.read_int()
     
@@ -425,3 +432,11 @@ class ZeldaClassicReader:
       'palnames': palnames,
       'cycles': cycles,
     }
+  
+  def to_json(self):
+    data = {
+      'combos': self.combos,
+      'tiles': self.tiles,
+      'csets': self.csets,
+    }
+    return pretty_json_format(data)
