@@ -14,6 +14,7 @@ if __name__ == "__main__":
 
     print('num tiles', len(r.tiles))
     print('num combos', len(r.combos))
+    # print('csets', r.csets)
 
     # save 400 at a time
     tiles_per_row = 20
@@ -38,6 +39,8 @@ if __name__ == "__main__":
           for ty in range(sprite_size):
             tile_offset = tx + ty * sprite_size
             color_index = tile[tile_offset]
+
+            r.csets['cycles'][0]
             color = int(color_index / 25 * 256)
             
             x = spritesheet_x + tx

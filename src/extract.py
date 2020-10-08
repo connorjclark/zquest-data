@@ -129,7 +129,7 @@ class Bytes:
     return [read() for _ in range(length)]
   
   def read_str(self, n):
-    return bytes(self.read(n))
+    return bytes(self.read(n)).rstrip(b'\x00')
 
   def debug(self, n):
     b = self.read(n)
@@ -398,25 +398,30 @@ class ZeldaClassicReader:
     
     self.combos = combos
   
-  # https://github.com/ArmageddonGames/ZeldaClassic/blob/30c9e17409304390527fcf84f75226826b46b819/src/zq_class.cpp#L8880
+  # https://github.com/ArmageddonGames/ZeldaClassic/blob/bdac8e682ac1eda23d775dacc5e5e34b237b82c0/src/qst.cpp#L15411
   def read_csets(self, version, cversion):
-    ## TODO: github source doesn't go back far enough
-    return
-    
     # https://github.com/ArmageddonGames/ZeldaClassic/blob/0fddc19a02ccf62c468d9201dd54dcb834b764ca/src/colors.h#L47
     newerpsTOTAL = (6701<<4)*3
     MAXLEVELS = 512
     PALNAMESIZE = 17
-    palnames_length = MAXLEVELS * PALNAMESIZE
     
-    color_data = self.b.read(newerpsTOTAL)
-    palnames = self.b.read(palnames_length)
+    color_data = self.b.read_array(1, newerpsTOTAL)
+
+    palnames = []
+    for _ in range(MAXLEVELS):
+      palnames.append((self.b.read_str(PALNAMESIZE)))
+
     palcycles = self.b.read_int()
     
     cycles = []
     for _ in range(palcycles):
-      cycles.push({
-        'first': self.b.read_array(1, 4),
-        'count': self.b.read_array(1, 4),
-        'speed': self.b.read_array(1, 4),
+      cycles.append({
+        'first': self.b.read_array(1, 3),
+        'count': self.b.read_array(1, 3),
+        'speed': self.b.read_array(1, 3),
       })
+    self.csets = {
+      'color_data': color_data,
+      'palnames': palnames,
+      'cycles': cycles,
+    }
