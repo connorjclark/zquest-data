@@ -141,7 +141,7 @@ int decode_file_007(const char *srcfile, const char *destfile, const char *heade
         }
       }
 
-      if (i < 20) printf("%c\n", c);
+      // if (i < 20) printf("%c\n", c);
       if ((c & 255) != header[i])
       {
         err = 6;
@@ -255,7 +255,7 @@ int decode_file_007(const char *srcfile, const char *destfile, const char *heade
     c &= 255;
     c1 += c;
     c2 = (c2 << 4) + (c2 >> 12) + c;
-    if (i % 100 == 0) printf("i = %ld c = %c\n", i, c);
+    // if (i % 100 == 0) printf("i = %ld c = %c\n", i, c);
     fputc(c, dest);
   }
 
@@ -389,7 +389,7 @@ int decode(const char *data, char *output, long size, int32_t method)
   mkstemp(destfname);
   fclose(fopen(destfname , "w"));
   
-  printf("decode_file_007(%s, %s)\n", srcfname, destfname);
+  // printf("decode_file_007(%s, %s)\n", srcfname, destfname);
   int ret = decode_file_007(srcfname, destfname, header, method, false, datapwd);
   if (ret != 0)
   {
@@ -403,7 +403,7 @@ int decode(const char *data, char *output, long size, int32_t method)
   // Copy from temporary to output buffer.
   // FILE *decoded = fopen(destfname, "rb");
   FILE *dest = fmemopen((void *)output, size - 8, "w");
-  printf("size = %ld\n", size);
+  // printf("size = %ld\n", size);
   for (int i = 0; i < size; i++)
   {
     char c;
@@ -415,8 +415,8 @@ int decode(const char *data, char *output, long size, int32_t method)
       // return 11;
     }
 
-    if (i < 20)
-      printf("c = %d %c\n", c, c);
+    // if (i < 20)
+    //   printf("c = %d %c\n", c, c);
     // if (i > 880) printf("i = %d\n", i);
     fputc(c, dest);
   }

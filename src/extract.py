@@ -5,6 +5,7 @@ import math
 from decode_wrapper import *
 from pretty_json import *
 import io
+import os
 import numpy as np
 
 # https://github.com/ArmageddonGames/ZeldaClassic/blob/30c9e17409304390527fcf84f75226826b46b819/src/zdefs.h#L155
@@ -100,6 +101,10 @@ class Bytes:
   def __init__(self, f):
     self.f = f
     self.bytes_read = 0
+
+    f.seek(0, os.SEEK_END)
+    self.length = f.tell()
+    f.seek(0)
   
   def has_bytes(self):
     more_bytes = self.f.read(1) != b''
@@ -111,8 +116,9 @@ class Bytes:
     if n == 0:
       return []
 
+    data = self.f.read(n)
     self.bytes_read += n
-    return self.f.read(n)
+    return data
   
   def read_byte(self):
     return unpack('B', self.read(1))[0]
@@ -175,67 +181,8 @@ class ZeldaClassicReader:
         continue
       else:
         raise Exception(f'error decoding: {err}')
-    
-    # print(decoded[0], decoded[1], decoded[2], decoded[3])
-    # print(decoded[0:120])
-    assert_equal(0, err)
-    
-    # seed = np.int32(self.b.read_byte() << 24)
-    # seed += np.int8(self.b.read_byte() & 255) << np.int32(16)
-    # seed += np.int8(self.b.read_byte() & 255) << np.int32(8)
-    # seed += np.int8(self.b.read_byte() & 255)
-    
-    # enc_mask = [np.int32(x) for x in [0x4C358938,0x91B2A2D1,0x4A7C1B87,0xF93941E6,0xFD095E94]]
-    # method = len(enc_mask) - 1
-    # seed ^= enc_mask[method]
-    
-    # tog = np.int32(0)
-    # r = np.int32(0)
-    # c1 = np.int16(0)
-    # c2 = np.int16(0)
-    # rand = Rand007_2(seed)
-    
-    # # read all the encoded data at once
-    # rest_of_data = self.b.f.read()
-    # # last 4 bytes are checksum
-    # encoded, checksum = rest_of_data[:len(rest_of_data)-4], rest_of_data[len(rest_of_data)-4:]
-    
-    # # decode
-    # decoded = bytearray(len(encoded))
-    # i = 0
-    # for c in encoded:
-    #   c = np.int8(c)
-    #   if i % 100000 == 0:
-    #     print(i / len(encoded) * 100)
 
-    #   if tog:
-    #     c -= np.int8(r)
-    #   else:
-    #     r = rand.next(method)
-    #     c ^= np.int8(r)
-      
-    #   tog ^= np.int32(1)
-    #   c &= np.int8(255)
-    #   c1 += c
-    #   c2 = (c2 << np.int16(4)) + (c2 >> np.int32(12)) + c
-      
-    #   decoded[i] = c + 128
-    #   i += 1
-    
-    # # checksums
-    # check1 = np.int16(checksum[0]) << np.int16(8)
-    # check1 += np.int16(checksum[1] & 255)
-    
-    # check2 = np.int16(checksum[2]) << np.int16(8)
-    # check2 += np.int16(checksum[3] & 255)
-    
-    # r = rand.next(method)
-    # check1 ^= np.int16(r)
-    # check2 -= np.int16(r)
-    # check1 &= np.int16(0xFFFF)
-    # check2 &= np.int16(0xFFFF)
-    # assert_equal(check1, c1)
-    # assert_equal(check2, c2)
+    assert_equal(0, err)
 
     # remake the byte reader with the decoded data
     header_start = decoded.find(b"HDR")
@@ -252,24 +199,24 @@ class ZeldaClassicReader:
 
     while self.b.has_bytes():
       self.read_section()
-    
+
 
   # https://github.com/ArmageddonGames/ZeldaClassic/blob/bdac8e682ac1eda23d775dacc5e5e34b237b82c0/src/zq_class.cpp#L6189
   # https://github.com/ArmageddonGames/ZeldaClassic/blob/20f9807a8e268172d0bd2b0461e417f1588b3882/src/qst.cpp#L2005
   # zdefs.h
-  def read_header(self, section_version, section_cversion):
+  def read_header(self, section_bytes, section_version, section_cversion):
     # p_iputw = 2 bytes = b.read_int()
 
-    zelda_version = self.b.read_int()
-    build = self.b.read_byte()
-    pw_hash = self.b.read_str(16)
-    internal = self.b.read_int()
-    quest_number = self.b.read_byte()
-    version = self.b.read_str(9)
-    min_version = self.b.read_str(9)
-    title = self.b.read_str(65)
-    author = self.b.read_str(65)
-    use_keyfile = self.b.read_byte()
+    zelda_version = section_bytes.read_int()
+    build = section_bytes.read_byte()
+    pw_hash = section_bytes.read_str(16)
+    internal = section_bytes.read_int()
+    quest_number = section_bytes.read_byte()
+    version = section_bytes.read_str(9)
+    min_version = section_bytes.read_str(9)
+    title = section_bytes.read_str(65)
+    author = section_bytes.read_str(65)
+    use_keyfile = section_bytes.read_byte()
 
     self.version = zelda_version
     self.build = build
@@ -294,9 +241,6 @@ class ZeldaClassicReader:
   def read_section(self):
     id, section_version, section_cversion = self.read_section_header()
     size = self.b.read_long()
-    print('read_section', id, size, section_version, section_cversion)
-
-    bytes_read_start = self.b.bytes_read
     
     sections = {
       ID_HEADER: self.read_header,
@@ -305,16 +249,19 @@ class ZeldaClassicReader:
       ID_CSETS: self.read_csets,
     }
 
+    if size > self.b.length - self.b.bytes_read:
+      print('give rest of data to section', size)
+      size = self.b.length - self.b.bytes_read
+
+    section_bytes = Bytes(io.BytesIO(self.b.read(size)))
     if id in sections:
-      sections[id](section_version, section_cversion)
+      print('read_section', id, size, section_version, section_cversion)
+      sections[id](section_bytes, section_version, section_cversion)
+      remaining = size - section_bytes.bytes_read
+      if remaining != 0:
+        print('section did not consume expected number of bytes. remaining:', remaining)
     else:
-      self.b.read(size)
       print('unknown section', id)
-    
-    remaining = size - (self.b.bytes_read - bytes_read_start)
-    if remaining != 0:
-      print('section did not consume expected number of bytes. remaining:', remaining)
-      self.b.read(remaining)
 
   
   # https://github.com/ArmageddonGames/ZeldaClassic/blob/30c9e17409304390527fcf84f75226826b46b819/src/zdefs.h#L1370
@@ -340,71 +287,76 @@ class ZeldaClassicReader:
 
 
   # https://github.com/ArmageddonGames/ZeldaClassic/blob/30c9e17409304390527fcf84f75226826b46b819/src/zq_class.cpp#L9184
-  def read_tiles(self, section_version, section_cversion):
+  def read_tiles(self, section_bytes, section_version, section_cversion):
     # ZC250MAXTILES = 32760
     # NEWMAXTILES = 214500
 
     if self.version >= 0x254:
-      tiles_used = self.b.read_long()
+      tiles_used = section_bytes.read_long()
     else:
-      tiles_used = self.b.read_int()
+      tiles_used = section_bytes.read_int()
 
     num_pixels = 16 * 16
     tiles = []
-    for _ in range(tiles_used):
+    while section_bytes.has_bytes():
       tile_format = 1
       if self.version > 0x211 or (self.version == 0x211 and self.build > 4):
-        tile_format = self.b.read_byte()
+        tile_format = section_bytes.read_byte()
 
       if tile_format == 0:
-        # self.b.read_array(1, num_pixels)
-        break
+        continue
+      
+      pixels = section_bytes.read_array(1, self.tilesize(tile_format))
+
+      if tile_format == 0:
+        # ?
+        pass
       elif tile_format == 1:
         # 1 byte per 2 pixels
-        data_length = int(num_pixels / 2)
-        data = self.b.read_array(1, data_length)
-        pixels = []
-        for val in data:
-          pixels.append(val & 0xF)
-          pixels.append((val >> 4) & 0xF)
+        pixels_expanded = []
+        for val in pixels:
+          pixels_expanded.append(val & 0xF)
+          pixels_expanded.append((val >> 4) & 0xF)
+        pixels = pixels_expanded
       elif tile_format == 2:
         # 1 byte per pixel
-        pixels = self.b.read_array(1, num_pixels)
+        pass
       else:
         raise Exception(f'unexpected format {tile_format}')
       
       tiles.append(pixels)
+
     self.tiles = tiles
 
   
   # https://github.com/ArmageddonGames/ZeldaClassic/blob/30c9e17409304390527fcf84f75226826b46b819/src/qst.cpp#L13150
-  def read_combos(self, section_version, section_cversion):
+  def read_combos(self, section_bytes, section_version, section_cversion):
     all_descriptors = [
       # TODO: determine which versions each key was added in.
-      {'version': 0, 'key': 'tile', 'read': lambda: self.b.read_long() if section_version >= 11 else self.b.read_int()},
-      {'version': 0, 'key': 'flip', 'read': lambda: self.b.read_byte()},
-      {'version': 0, 'key': 'walk', 'read': lambda: self.b.read_byte()},
-      {'version': 0, 'key': 'type', 'read': lambda: self.b.read_byte()},
-      {'version': 0, 'key': 'csets', 'read': lambda: self.b.read_byte()},
-      {'version': 0, 'key': 'frames', 'read': lambda: self.b.read_byte()},
-      {'version': 0, 'key': 'speed', 'read': lambda: self.b.read_byte()},
-      {'version': 0, 'key': 'nextcombo', 'read': lambda: self.b.read_int()},
-      {'version': 0, 'key': 'nextcset', 'read': lambda: self.b.read_byte()},
-      {'version': 0, 'key': 'flag', 'read': lambda: self.b.read_byte()},
-      {'version': 0, 'key': 'skipanim', 'read': lambda: self.b.read_byte()},
-      {'version': 0, 'key': 'nexttimer', 'read': lambda: self.b.read_int()},
-      {'version': 0, 'key': 'skipanimy', 'read': lambda: self.b.read_byte()},
-      {'version': 0, 'key': 'animflags', 'read': lambda: self.b.read_byte()},
+      {'version': 0, 'key': 'tile', 'read': lambda: section_bytes.read_long() if section_version >= 11 else section_bytes.read_int()},
+      {'version': 0, 'key': 'flip', 'read': lambda: section_bytes.read_byte()},
+      {'version': 0, 'key': 'walk', 'read': lambda: section_bytes.read_byte()},
+      {'version': 0, 'key': 'type', 'read': lambda: section_bytes.read_byte()},
+      {'version': 0, 'key': 'csets', 'read': lambda: section_bytes.read_byte()},
+      {'version': 0, 'key': 'frames', 'read': lambda: section_bytes.read_byte()},
+      {'version': 0, 'key': 'speed', 'read': lambda: section_bytes.read_byte()},
+      {'version': 0, 'key': 'nextcombo', 'read': lambda: section_bytes.read_int()},
+      {'version': 0, 'key': 'nextcset', 'read': lambda: section_bytes.read_byte()},
+      {'version': 0, 'key': 'flag', 'read': lambda: section_bytes.read_byte()},
+      {'version': 0, 'key': 'skipanim', 'read': lambda: section_bytes.read_byte()},
+      {'version': 0, 'key': 'nexttimer', 'read': lambda: section_bytes.read_int()},
+      {'version': 0, 'key': 'skipanimy', 'read': lambda: section_bytes.read_byte()},
+      {'version': 0, 'key': 'animflags', 'read': lambda: section_bytes.read_byte()},
       # Not tested.
-      # {'version': 0, 'key': 'attributes', 'read': lambda: self.b.read_array(4, NUM_COMBO_ATTRIBUTES)},
-      # {'version': 0, 'key': 'usrflags', 'read': lambda: self.b.read_long()},
-      # {'version': 0, 'key': 'triggerflags', 'read': lambda: self.b.read_array(4, 3)},
-      # {'version': 12, 'key': 'triggerlevel', 'read': lambda: self.b.read_long()},
+      # {'version': 0, 'key': 'attributes', 'read': lambda: section_bytes.read_array(4, NUM_COMBO_ATTRIBUTES)},
+      # {'version': 0, 'key': 'usrflags', 'read': lambda: section_bytes.read_long()},
+      # {'version': 0, 'key': 'triggerflags', 'read': lambda: section_bytes.read_array(4, 3)},
+      # {'version': 12, 'key': 'triggerlevel', 'read': lambda: section_bytes.read_long()},
     ]
     descriptors = [x for x in all_descriptors if self.version >= x['version']]
     
     combos = []
-    num_combos = self.b.read_int()
+    num_combos = section_bytes.read_int()
     for _ in range(num_combos):
       combo = {}
       for descriptor in descriptors:
@@ -414,26 +366,26 @@ class ZeldaClassicReader:
     self.combos = combos
   
   # https://github.com/ArmageddonGames/ZeldaClassic/blob/bdac8e682ac1eda23d775dacc5e5e34b237b82c0/src/qst.cpp#L15411
-  def read_csets(self, section_version, section_cversion):
+  def read_csets(self, section_bytes, section_version, section_cversion):
     # https://github.com/ArmageddonGames/ZeldaClassic/blob/0fddc19a02ccf62c468d9201dd54dcb834b764ca/src/colors.h#L47
     newerpsTOTAL = (6701<<4)*3
     MAXLEVELS = 512
     PALNAMESIZE = 17
     
-    color_data = self.b.read_array(1, newerpsTOTAL)
+    color_data = section_bytes.read_array(1, newerpsTOTAL)
 
     palnames = []
     for _ in range(MAXLEVELS):
-      palnames.append(self.b.read_str(PALNAMESIZE))
+      palnames.append(section_bytes.read_str(PALNAMESIZE))
 
-    palcycles = self.b.read_int()
+    palcycles = section_bytes.read_int()
     
     cycles = []
     for _ in range(palcycles):
       cycles.append({
-        'first': self.b.read_array(1, 3),
-        'count': self.b.read_array(1, 3),
-        'speed': self.b.read_array(1, 3),
+        'first': section_bytes.read_array(1, 3),
+        'count': section_bytes.read_array(1, 3),
+        'speed': section_bytes.read_array(1, 3),
       })
     self.csets = {
       'color_data': color_data,
