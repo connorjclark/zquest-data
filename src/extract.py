@@ -247,7 +247,7 @@ class ZeldaClassicReader:
 
   # https://github.com/ArmageddonGames/ZeldaClassic/blob/30c9e17409304390527fcf84f75226826b46b819/src/zq_class.cpp#L5414
   def read_zgp(self):
-    id, version, cversion = self.read_section_header()
+    id, section_version, section_cversion = self.read_section_header()
     assert_equal(ID_GRAPHICSPACK, id) 
 
     while self.b.has_bytes():
@@ -257,10 +257,10 @@ class ZeldaClassicReader:
   # https://github.com/ArmageddonGames/ZeldaClassic/blob/bdac8e682ac1eda23d775dacc5e5e34b237b82c0/src/zq_class.cpp#L6189
   # https://github.com/ArmageddonGames/ZeldaClassic/blob/20f9807a8e268172d0bd2b0461e417f1588b3882/src/qst.cpp#L2005
   # zdefs.h
-  def read_header(self, version, cversion):
+  def read_header(self, section_version, section_cversion):
     # p_iputw = 2 bytes = b.read_int()
 
-    version = self.b.read_int()
+    zelda_version = self.b.read_int()
     build = self.b.read_byte()
     pw_hash = self.b.read_str(16)
     internal = self.b.read_int()
@@ -271,11 +271,14 @@ class ZeldaClassicReader:
     author = self.b.read_str(65)
     use_keyfile = self.b.read_byte()
 
+    self.version = zelda_version
+    self.build = build
+    print('--- version and build', hex(self.version), self.build)
     # ...
 
     print('internal', internal)
     print('quest_number', quest_number)
-    print('version', version)
+    print('zelda_version', zelda_version)
     print('min_version', min_version)
     print('title', title)
     print('author', author)
@@ -283,15 +286,15 @@ class ZeldaClassicReader:
 
   def read_section_header(self):
     id = self.b.read(4)
-    version = self.b.read_int()
-    cversion = self.b.read_int()
-    return (id, version, cversion)
+    section_version = self.b.read_int()
+    section_cversion = self.b.read_int()
+    return (id, section_version, section_cversion)
   
   
   def read_section(self):
-    id, version, cversion = self.read_section_header()
+    id, section_version, section_cversion = self.read_section_header()
     size = self.b.read_long()
-    print('read_section', id, size, version, cversion)
+    print('read_section', id, size, section_version, section_cversion)
 
     bytes_read_start = self.b.bytes_read
     
@@ -303,7 +306,7 @@ class ZeldaClassicReader:
     }
 
     if id in sections:
-      sections[id](version, cversion)
+      sections[id](section_version, section_cversion)
     else:
       self.b.read(size)
       print('unknown section', id)
@@ -332,13 +335,16 @@ class ZeldaClassicReader:
     
     return 256
 
-  def read_gpak(self, version, cversion):
+  def read_gpak(self, section_version, section_cversion):
     pass
 
 
   # https://github.com/ArmageddonGames/ZeldaClassic/blob/30c9e17409304390527fcf84f75226826b46b819/src/zq_class.cpp#L9184
-  def read_tiles(self, version, cversion):
-    if version > 1:
+  def read_tiles(self, section_version, section_cversion):
+    # ZC250MAXTILES = 32760
+    # NEWMAXTILES = 214500
+
+    if self.version >= 0x254:
       tiles_used = self.b.read_long()
     else:
       tiles_used = self.b.read_int()
@@ -346,9 +352,12 @@ class ZeldaClassicReader:
     num_pixels = 16 * 16
     tiles = []
     for _ in range(tiles_used):
-      tile_format = self.b.read_byte()
+      tile_format = 1
+      if self.version > 0x211 or (self.version == 0x211 and self.build > 4):
+        tile_format = self.b.read_byte()
 
       if tile_format == 0:
+        # self.b.read_array(1, num_pixels)
         break
       elif tile_format == 1:
         # 1 byte per 2 pixels
@@ -365,15 +374,14 @@ class ZeldaClassicReader:
         raise Exception(f'unexpected format {tile_format}')
       
       tiles.append(pixels)
-    
     self.tiles = tiles
 
   
-  # https://github.com/ArmageddonGames/ZeldaClassic/blob/30c9e17409304390527fcf84f75226826b46b819/src/zq_class.cpp#L9184
-  def read_combos(self, version, cversion):
+  # https://github.com/ArmageddonGames/ZeldaClassic/blob/30c9e17409304390527fcf84f75226826b46b819/src/qst.cpp#L13150
+  def read_combos(self, section_version, section_cversion):
     all_descriptors = [
       # TODO: determine which versions each key was added in.
-      {'version': 0, 'key': 'tile', 'read': lambda: self.b.read_long() if version >= 11 else self.b.read_int()},
+      {'version': 0, 'key': 'tile', 'read': lambda: self.b.read_long() if section_version >= 11 else self.b.read_int()},
       {'version': 0, 'key': 'flip', 'read': lambda: self.b.read_byte()},
       {'version': 0, 'key': 'walk', 'read': lambda: self.b.read_byte()},
       {'version': 0, 'key': 'type', 'read': lambda: self.b.read_byte()},
@@ -393,7 +401,7 @@ class ZeldaClassicReader:
       # {'version': 0, 'key': 'triggerflags', 'read': lambda: self.b.read_array(4, 3)},
       # {'version': 12, 'key': 'triggerlevel', 'read': lambda: self.b.read_long()},
     ]
-    descriptors = [x for x in all_descriptors if version >= x['version']]
+    descriptors = [x for x in all_descriptors if self.version >= x['version']]
     
     combos = []
     num_combos = self.b.read_int()
@@ -406,7 +414,7 @@ class ZeldaClassicReader:
     self.combos = combos
   
   # https://github.com/ArmageddonGames/ZeldaClassic/blob/bdac8e682ac1eda23d775dacc5e5e34b237b82c0/src/qst.cpp#L15411
-  def read_csets(self, version, cversion):
+  def read_csets(self, section_version, section_cversion):
     # https://github.com/ArmageddonGames/ZeldaClassic/blob/0fddc19a02ccf62c468d9201dd54dcb834b764ca/src/colors.h#L47
     newerpsTOTAL = (6701<<4)*3
     MAXLEVELS = 512
