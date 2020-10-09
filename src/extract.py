@@ -111,6 +111,12 @@ class Bytes:
     if more_bytes:
       self.f.seek(-1,1)
     return more_bytes
+
+  def peek(self):
+    byte = self.f.read(1)
+    if byte != b'':
+      self.f.seek(-1,1)
+    return byte
   
   def read(self, n):
     if n == 0:
@@ -184,6 +190,10 @@ class ZeldaClassicReader:
 
     assert_equal(0, err)
 
+    f = open('./output/decoded.data', 'wb')
+    f.write(decoded)
+    f.close()
+
     # remake the byte reader with the decoded data
     header_start = decoded.find(b"HDR")
     self.b = Bytes(io.BytesIO(decoded[header_start:]))
@@ -250,7 +260,7 @@ class ZeldaClassicReader:
     }
 
     if size > self.b.length - self.b.bytes_read:
-      print('give rest of data to section', size)
+      print('section size is bigger than rest of data, clamping')
       size = self.b.length - self.b.bytes_read
 
     section_bytes = Bytes(io.BytesIO(self.b.read(size)))
@@ -261,7 +271,7 @@ class ZeldaClassicReader:
       if remaining != 0:
         print('section did not consume expected number of bytes. remaining:', remaining)
     else:
-      print('unknown section', id)
+      print('unknown section', id, size)
 
   
   # https://github.com/ArmageddonGames/ZeldaClassic/blob/30c9e17409304390527fcf84f75226826b46b819/src/zdefs.h#L1370
@@ -291,26 +301,23 @@ class ZeldaClassicReader:
     # ZC250MAXTILES = 32760
     # NEWMAXTILES = 214500
 
-    if self.version >= 0x254:
+    if self.version >= 0x254 and self.build >= 41:
       tiles_used = section_bytes.read_long()
     else:
       tiles_used = section_bytes.read_int()
 
-    num_pixels = 16 * 16
     tiles = []
     while section_bytes.has_bytes():
       tile_format = 1
       if self.version > 0x211 or (self.version == 0x211 and self.build > 4):
         tile_format = section_bytes.read_byte()
 
-      if tile_format == 0:
-        continue
-      
       pixels = section_bytes.read_array(1, self.tilesize(tile_format))
 
       if tile_format == 0:
         # ?
-        pass
+        # pass
+        break
       elif tile_format == 1:
         # 1 byte per 2 pixels
         pixels_expanded = []
