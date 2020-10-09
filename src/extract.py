@@ -120,7 +120,7 @@ class Bytes:
   
   def read(self, n):
     if n == 0:
-      return []
+      return b''
 
     data = self.f.read(n)
     self.bytes_read += n
@@ -251,7 +251,10 @@ class ZeldaClassicReader:
   def read_section(self):
     id, section_version, section_cversion = self.read_section_header()
     size = self.b.read_long()
-    
+
+    if size > 0:
+      print(id, size)
+
     sections = {
       ID_HEADER: self.read_header,
       ID_TILES: self.read_tiles,
@@ -271,7 +274,8 @@ class ZeldaClassicReader:
       if remaining != 0:
         print('section did not consume expected number of bytes. remaining:', remaining)
     else:
-      print('unknown section', id, size)
+      # print('unknown section', id, size)
+      pass
 
   
   # https://github.com/ArmageddonGames/ZeldaClassic/blob/30c9e17409304390527fcf84f75226826b46b819/src/zdefs.h#L1370

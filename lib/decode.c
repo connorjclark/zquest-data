@@ -402,17 +402,19 @@ int decode(const char *data, char *output, long size, int32_t method)
 
   // Copy from temporary to output buffer.
   // FILE *decoded = fopen(destfname, "rb");
-  FILE *dest = fmemopen((void *)output, size - 8, "w");
+  // TODO: shouldn't just guess how big the output will be ...
+  FILE *dest = fmemopen((void *)output, size * 5, "w");
   // printf("size = %ld\n", size);
-  for (int i = 0; i < size; i++)
+  for (int i = 0; i < size*5; i++)
   {
     char c;
     if ((c = pack_getc(decoded)) == EOF)
     {
-      // printf("errno fgetc(decoded): %d\n", errno);
+      // printf("errno fgetc(decoded): %d at i = %d\n", c, i);
       // printf("ferror fgetc(decoded): %d\n", ferror(decoded));
       // fclose(decoded);
       // return 11;
+      // break;
     }
 
     // if (i < 20)
