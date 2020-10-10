@@ -96,7 +96,57 @@ ID_SFX = b'SFX '
 def assert_equal(expected, actual):
   if expected != actual:
     raise Exception(f'expected {expected} but got {actual}')
+
+class Version:
+  def __init__(self, zelda_version=None, build=None):
+    self.zelda_version = zelda_version
+    self.build = build
+  
+  def __str__(self):
+    parts = []
+    if self.zelda_version != None:
+      parts.append(f'zelda_version = {self.zelda_version}')
+    if self.build != None:
+      parts.append(f'build = {self.build}')
+    return ', '.join(parts)
+
+  def __eq__(self, other):
+    raise 'NotImplemented'
+  
+  def _cmp(self, other):
+    if self.zelda_version == None or other.zelda_version == None:
+      if self.zelda_version != None or other.zelda_version != None:
+        raise 'Invalid input'
     
+    if self.build == None or other.build == None:
+      if self.build != None or other.build != None:
+        raise 'Invalid input'
+    
+    if self.zelda_version > other.zelda_version:
+      return 1
+    elif self.zelda_version < other.zelda_version:
+      return -1
+    
+    if self.build > other.build:
+      return 1
+    elif self.build < other.build:
+      return -1
+    
+    return 0
+
+  def __ge__(self, other):
+    return self._cmp(other) >= 0
+
+  def __gt__(self, other):
+    return self._cmp(other) > 0
+  
+  def __le__(self, other):
+    return self._cmp(other) <= 0
+
+  def __lt__(self, other):
+    return self._cmp(other) < 0
+
+
 class Bytes:
   def __init__(self, f):
     self.f = f
@@ -228,9 +278,8 @@ class ZeldaClassicReader:
     author = section_bytes.read_str(65)
     use_keyfile = section_bytes.read_byte()
 
-    self.version = zelda_version
-    self.build = build
-    print('--- version and build', hex(self.version), self.build)
+    self.version = Version(zelda_version, build)
+    print(self.version)
     # ...
 
     print('internal', internal)
@@ -260,6 +309,7 @@ class ZeldaClassicReader:
       ID_TILES: self.read_tiles,
       ID_COMBOS: self.read_combos,
       ID_CSETS: self.read_csets,
+      ID_DMAPS: self.read_dmaps,
     }
 
     if size > self.b.length - self.b.bytes_read:
@@ -305,7 +355,7 @@ class ZeldaClassicReader:
     # ZC250MAXTILES = 32760
     # NEWMAXTILES = 214500
 
-    if self.version >= 0x254 and self.build >= 41:
+    if self.version >= Version(zelda_version=0x254, build=41):
       tiles_used = section_bytes.read_long()
     else:
       tiles_used = section_bytes.read_int()
@@ -313,7 +363,7 @@ class ZeldaClassicReader:
     tiles = []
     while section_bytes.has_bytes():
       tile_format = 1
-      if self.version > 0x211 or (self.version == 0x211 and self.build > 4):
+      if self.version > Version(zelda_version=0x211, build=4):
         tile_format = section_bytes.read_byte()
 
       pixels = section_bytes.read_array(1, self.tilesize(tile_format))
@@ -364,7 +414,7 @@ class ZeldaClassicReader:
       # {'version': 0, 'key': 'triggerflags', 'read': lambda: section_bytes.read_array(4, 3)},
       # {'version': 12, 'key': 'triggerlevel', 'read': lambda: section_bytes.read_long()},
     ]
-    descriptors = [x for x in all_descriptors if self.version >= x['version']]
+    descriptors = [x for x in all_descriptors if self.version.zelda_version >= x['version']]
     
     combos = []
     num_combos = section_bytes.read_int()
@@ -403,6 +453,94 @@ class ZeldaClassicReader:
       'palnames': palnames,
       'cycles': cycles,
     }
+  
+  def read_dmaps(self, section_bytes, section_version, section_cversion):
+    num_dmaps = section_bytes.read_int()
+
+    for _ in range(num_dmaps):
+      map_ = section_bytes.read_byte()
+
+      if section_version <= 4:
+        level = section_bytes.read_byte()
+      else:
+        level = section_bytes.read_int()
+      
+      xoff = section_bytes.read_byte()
+      
+      compass = section_bytes.read_byte()
+      
+      if section_version > 8:
+        color = section_bytes.read_int()
+      else:
+        color = section_bytes.read_byte()
+      
+      midi = section_bytes.read_byte()
+      
+      cont = section_bytes.read_byte()
+      
+      type_ = section_bytes.read_byte()
+
+      grid = section_bytes.read_array(1, 8)
+
+      if self.version < Version(zelda_version=0x192, build=41):
+        raise 'TODO'
+
+      name = section_bytes.read_str(21)
+      title = section_bytes.read_str(21)
+      intro = section_bytes.read_str(73)
+
+      minimap = []
+      for __ in range(4):
+        entry = {}
+        if section_version >= 11:
+          entry['tile'] = section_bytes.read_long()
+        else:
+          entry['tile'] = section_bytes.read_int()
+        entry['cset'] = section_bytes.read_byte()
+        minimap.append(entry)
+
+      if section_version > 1:
+        tmusictrack = section_bytes.read_byte()
+        active_subscreen = section_bytes.read_byte()
+        passive_subscreen = section_bytes.read_byte()
+      
+      if section_version > 2:
+        di = section_bytes.read_array(1, 32)
+      
+      if section_version >= 6:
+        flags = section_bytes.read_long()
+      elif section_version > 3:
+        temp = section_bytes.read_byte()
+      else:
+        raise 'TODO'
+      
+      if section_version < 7:
+        raise 'TODO'
+      
+      if section_version < 8:
+        raise 'TODO'
+      
+      if section_version < 8:
+        raise 'TODO'
+      
+      if self.version > Version(zelda_version=0x192, build=41):
+        padding = section_bytes.read_byte()
+      
+      if section_version >= 10:
+        sideview = section_bytes.read_byte()
+      
+      if section_version >= 12:
+        script = section_bytes.read_int()
+        section_bytes.read_array(4, 8)
+      
+      if section_version >= 13:
+        section_bytes.read_array(1, 8 * 65)
+      
+      if section_version >= 14:
+        section_bytes.read_int()
+        section_bytes.read_int()
+        section_bytes.read_array(4, 8)
+        section_bytes.read_array(1, 8 * 65)
   
   def to_json(self):
     data = {
