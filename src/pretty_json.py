@@ -1,3 +1,4 @@
+import json
 import numpy
 
 INDENT = 3
@@ -22,7 +23,7 @@ def pretty_json_format(o, level=2):
 
     ret += NEWLINE + SPACE * INDENT * level + "}"
   elif isinstance(o, str):
-    ret += '"' + o + '"'
+    ret += json.dumps(o)
   elif isinstance(o, list):
     ret += "[" + ",".join([pretty_json_format(e, level + 1) for e in o]) + "]"
   # Tuples are interpreted as lists

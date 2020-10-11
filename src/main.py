@@ -44,7 +44,7 @@ if __name__ == "__main__":
             tile_offset = tx + ty * sprite_size
             cset_offset = tile[tile_offset] # 0-15
 
-            cset_index = 0
+            cset_index = 3
             color_index = cset_index * 16 * 3 + cset_offset * 3
             r = reader.csets['color_data'][color_index + 0] * 4
             g = reader.csets['color_data'][color_index + 1] * 4
@@ -54,5 +54,5 @@ if __name__ == "__main__":
             y = spritesheet_y + ty
             pixels[x,y] = (r, g, b)
 
-      img.save(f'output/tiles_{page_index}.png')
+      img.save(f'output/tiles_{str(page_index).zfill(3)}.png')
       page_index += 1
