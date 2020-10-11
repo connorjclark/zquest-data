@@ -105,7 +105,7 @@ class Version:
   def __str__(self):
     parts = []
     if self.zelda_version != None:
-      parts.append(f'zelda_version = {self.zelda_version}')
+      parts.append(f'zelda_version = {hex(self.zelda_version)}')
     if self.build != None:
       parts.append(f'build = {self.build}')
     return ', '.join(parts)
@@ -318,6 +318,7 @@ class ZeldaClassicReader:
       ID_CSETS: self.read_csets,
       ID_DMAPS: self.read_dmaps,
       ID_MAPS: self.read_maps,
+      ID_GUYS: self.read_guys,
     }
 
     if size > self.b.length - self.b.bytes_read:
@@ -807,6 +808,99 @@ class ZeldaClassicReader:
     self.maps = maps
 
 
+  def read_guys(self, section_bytes, section_version, section_cversion):
+    if section_version <= 3:
+      raise 'TODO'
+    
+    guys = []
+    for _ in range(512):
+      guy = {}
+      guy['name'] = section_bytes.read_str(64)
+      guys.append(guy)
+    
+    for i in range(512):
+      guy = guys[i]
+
+      guy['flags'] = section_bytes.read_long()
+      guy['flags2'] = section_bytes.read_long()
+      if section_version >= 36:
+        raise 'TODO' # ?
+
+      guy['tile'] = section_bytes.read_int()
+      guy['width'] = section_bytes.read_byte()
+      guy['height'] = section_bytes.read_byte()
+      guy['s_tile'] = section_bytes.read_int()
+      guy['s_width'] = section_bytes.read_byte()
+      guy['s_height'] = section_bytes.read_byte()
+      guy['e_tile'] = section_bytes.read_int()
+
+      guy['e_width'] = section_bytes.read_byte()
+      guy['e_height'] = section_bytes.read_byte()
+      guy['hp'] = section_bytes.read_int()
+      guy['family'] = section_bytes.read_int()
+      guy['cset'] = section_bytes.read_int()
+      guy['anim'] = section_bytes.read_int()
+      guy['e_anim'] = section_bytes.read_int()
+      guy['frate'] = section_bytes.read_int()
+      guy['e_frate'] = section_bytes.read_int()
+
+      guy['dp'] = section_bytes.read_int()
+      guy['wdp'] = section_bytes.read_int()
+      guy['weapon'] = section_bytes.read_int()
+
+      guy['rate'] = section_bytes.read_int()
+      guy['hrate'] = section_bytes.read_int()
+      guy['step'] = section_bytes.read_int()
+
+      guy['homing'] = section_bytes.read_int()
+      guy['grumble'] = section_bytes.read_int()
+      guy['item_set'] = section_bytes.read_int()
+
+      if section_version >= 22:
+        guy['misc'] = section_bytes.read_array(4, 10)
+      else:
+        raise 'TODO'
+      
+      guy['bgsfx'] = section_bytes.read_int()
+      guy['bosspal'] = section_bytes.read_int()
+      guy['extend'] = section_bytes.read_int()
+
+      if section_version >= 16:
+        guy['defense'] = section_bytes.read_array(1, 19)
+      
+      if section_version >= 18:
+        guy['hitsfx'] = section_bytes.read_byte()
+        guy['deadsfx'] = section_bytes.read_byte()
+      
+      if section_version >= 22:
+        guy['misc11'] = section_bytes.read_long()
+        guy['misc12'] = section_bytes.read_long()
+      
+      if section_version > 24:
+        section_bytes.read_array(1, 41 - 19)
+      
+      if section_version > 25:
+        guy['txsz'] = section_bytes.read_long()
+        guy['tysz'] = section_bytes.read_long()
+        guy['hxsz'] = section_bytes.read_long()
+        guy['hysz'] = section_bytes.read_long()
+        guy['hzsz'] = section_bytes.read_long()
+      
+      if section_version > 26:
+        section_bytes.read_long()
+        section_bytes.read_long()
+        section_bytes.read_long()
+        section_bytes.read_long()
+        section_bytes.read_long()
+      
+      if section_version >= 30:
+        guy['frozentile'] = section_bytes.read_long()
+        guy['frozencset'] = section_bytes.read_long()
+        guy['frozenclock'] = section_bytes.read_long()
+        guy['frozenmisc'] = section_bytes.read_array(2, 10)
+
+    self.guys = guys
+
   def to_json(self):
     data = {
       'combos': self.combos,
@@ -814,5 +908,6 @@ class ZeldaClassicReader:
       'csets': self.csets,
       # 'dmaps': self.dmaps,
       'maps': self.maps,
+      'guys': self.guys,
     }
     return pretty_json_format(data)
