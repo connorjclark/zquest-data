@@ -236,18 +236,23 @@ class ZeldaClassicReader:
         break
       elif err == 5:
         # decoding error, try with a different method.
+        print('decoding failed, trying different method')
         continue
       else:
-        raise Exception(f'error decoding: {err}')
+        raise Exception(f'error decoding: {err}.')
 
-    assert_equal(0, err)
+    if err != 0:
+      raise Exception('Could not decode file')
+    print('decoded file successfully')
 
     f = open('./output/decoded.data', 'wb')
     f.write(decoded)
     f.close()
 
     # remake the byte reader with the decoded data
-    header_start = decoded.find(b"HDR")
+    header_start = decoded.find(b'HDR')
+    if header_start == -1:
+      raise Exception('could not find HDR section')
     self.b = Bytes(io.BytesIO(decoded[header_start:]))
 
     # actually read the file now

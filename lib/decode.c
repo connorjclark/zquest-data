@@ -65,7 +65,6 @@ int decode_file_007(const char *srcfile, const char *destfile, const char *heade
 
   // open files
   size = file_size_ex_password(srcfile, password);
-  printf("size %ld\n", size);
 
   if (size < 1)
   {
@@ -393,7 +392,7 @@ int decode(const char *data, char *output, long size, int32_t method)
   int ret = decode_file_007(srcfname, destfname, header, method, false, datapwd);
   if (ret != 0)
   {
-    printf("err decode_file_007: %d\n", ret);
+    // printf("err decode_file_007: %d\n", ret);
     return ret;
   }
 
