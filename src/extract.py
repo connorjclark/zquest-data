@@ -197,10 +197,10 @@ class Bytes:
   def read_str(self, n):
     raw = self.read(n)
     try:
-      return raw.rstrip(b'\x00').decode('utf-8')
+      return raw.lstrip(b'\x00').rstrip(b'\x00').decode('utf-8')
     except:
       # :/
-      return str(raw.rstrip(b'\x00'))
+      return str(raw.lstrip(b'\x00').rstrip(b'\x00'))
 
   def debug(self, n):
     b = self.read(n)
@@ -319,6 +319,7 @@ class ZeldaClassicReader:
       ID_DMAPS: self.read_dmaps,
       ID_MAPS: self.read_maps,
       ID_GUYS: self.read_guys,
+      ID_WEAPONS: self.read_weapons,
     }
 
     if size > self.b.length - self.b.bytes_read:
@@ -807,7 +808,6 @@ class ZeldaClassicReader:
 
     self.maps = maps
 
-
   def read_guys(self, section_bytes, section_version, section_cversion):
     if section_version <= 3:
       raise 'TODO'
@@ -901,6 +901,34 @@ class ZeldaClassicReader:
 
     self.guys = guys
 
+  def read_weapons(self, section_bytes, section_version, section_cversion):
+    weapons = []
+
+    if section_version > 2:
+      for _ in range(256):
+        weapon = {}
+        weapon['name'] = section_bytes.read_str(64)
+        weapons.append(weapon)
+
+        if section_version < 5:
+          raise 'TODO'
+
+      for i in range(256):
+        weapon = weapons[i]
+        weapon['tile'] = section_bytes.read_int()
+        weapon['misc'] = section_bytes.read_byte()
+        weapon['csets'] = section_bytes.read_byte()
+        weapon['frames'] = section_bytes.read_byte()
+        weapon['speed'] = section_bytes.read_byte()
+        weapon['type'] = section_bytes.read_byte()
+        if section_version >= 7:
+          weapon['script'] = section_bytes.read_int()
+          weapon['newtile'] = section_bytes.read_long()
+    else:
+      raise 'TODO'
+
+    self.weapons = weapons
+
   def to_json(self):
     data = {
       'combos': self.combos,
@@ -909,5 +937,6 @@ class ZeldaClassicReader:
       # 'dmaps': self.dmaps,
       'maps': self.maps,
       'guys': self.guys,
+      'weapons': self.weapons,
     }
     return pretty_json_format(data)
