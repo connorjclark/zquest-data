@@ -905,7 +905,8 @@ class ZeldaClassicReader:
     weapons = []
 
     if section_version > 2:
-      for _ in range(256):
+      num_weapons = section_bytes.read_int()
+      for _ in range(num_weapons):
         weapon = {}
         weapon['name'] = section_bytes.read_str(64)
         weapons.append(weapon)
@@ -913,7 +914,7 @@ class ZeldaClassicReader:
         if section_version < 5:
           raise 'TODO'
 
-      for i in range(256):
+      for i in range(num_weapons):
         weapon = weapons[i]
         weapon['tile'] = section_bytes.read_int()
         weapon['misc'] = section_bytes.read_byte()
