@@ -320,6 +320,7 @@ class ZeldaClassicReader:
       ID_MAPS: self.read_maps,
       ID_GUYS: self.read_guys,
       ID_WEAPONS: self.read_weapons,
+      ID_LINKSPRITES: self.read_link_sprites,
     }
 
     if size > self.b.length - self.b.bytes_read:
@@ -929,6 +930,40 @@ class ZeldaClassicReader:
       raise 'TODO'
 
     self.weapons = weapons
+  
+  def read_link_sprites(self, section_bytes, section_version, section_cversion):
+    if section_version >= 6:
+      raise 'TODO'
+
+    walk = []
+    for _ in range(4):
+      walk.append({
+        'tile': section_bytes.read_int(),
+        'flip': section_bytes.read_byte(),
+        'extend': section_bytes.read_byte(),
+      })
+    
+    stab = []
+    for _ in range(4):
+      stab.append({
+        'tile': section_bytes.read_int(),
+        'flip': section_bytes.read_byte(),
+        'extend': section_bytes.read_byte(),
+      })
+    
+    slash = []
+    for _ in range(4):
+      slash.append({
+        'tile': section_bytes.read_int(),
+        'flip': section_bytes.read_byte(),
+        'extend': section_bytes.read_byte(),
+      })
+    
+    self.link_sprites = {
+      'walk': walk,
+      'stab': stab,
+      'slash': slash
+    }
 
   def to_json(self):
     data = {
@@ -939,5 +974,6 @@ class ZeldaClassicReader:
       'maps': self.maps,
       'guys': self.guys,
       'weapons': self.weapons,
+      'link_sprites': self.link_sprites,
     }
     return pretty_json_format(data)
