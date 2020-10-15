@@ -28,7 +28,7 @@ if __name__ == "__main__":
     tile_index = 0
     page_index = 0
     while tile_index < len(reader.tiles):
-      img = Image.new('RGB', (tiles_per_row * sprite_size, rows_per_page * sprite_size))
+      img = Image.new('RGBA', (tiles_per_row * sprite_size, rows_per_page * sprite_size))
       pixels = img.load()
       for index_in_page in range(tiles_per_row * rows_per_page):
         if tile_index >= len(reader.tiles):
@@ -43,16 +43,18 @@ if __name__ == "__main__":
           for ty in range(sprite_size):
             tile_offset = tx + ty * sprite_size
             cset_offset = tile[tile_offset] # 0-15
-
-            cset_index = 3
-            color_index = cset_index * 16 * 3 + cset_offset * 3
-            r = reader.csets['color_data'][color_index + 0] * 4
-            g = reader.csets['color_data'][color_index + 1] * 4
-            b = reader.csets['color_data'][color_index + 2] * 4
-            
             x = spritesheet_x + tx
             y = spritesheet_y + ty
-            pixels[x,y] = (r, g, b)
+
+            if (cset_offset == 0):
+              pixels[x,y] = (0, 0, 0, 0)
+            else:
+              cset_index = 3 # hardcoded ...
+              color_index = cset_index * 16 * 3 + cset_offset * 3
+              r = reader.csets['color_data'][color_index + 0] * 4
+              g = reader.csets['color_data'][color_index + 1] * 4
+              b = reader.csets['color_data'][color_index + 2] * 4
+              pixels[x,y] = (r, g, b)
 
       img.save(f'output/tiles_{str(page_index).zfill(3)}.png')
       page_index += 1
