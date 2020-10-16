@@ -618,7 +618,7 @@ class ZeldaClassicReader:
       if section_version <= 11:
         raise 'TODO'
       else:
-        tilewarpdmap = section_bytes.read_array(2, 4)
+        screen['tilewarpdmap'] = section_bytes.read_array(2, 4)
       
       screen['tilewarpscr'] = [section_bytes.read_byte()]
       if self.version > Version(zelda_version=0x211, build=7):
