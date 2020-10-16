@@ -1,6 +1,12 @@
 import sys
+import re
 from extract import *
 from PIL import Image
+
+def slugify(value):
+  value = str(value).strip().replace(' ', '_')
+  return re.sub(r'(?u)[^-\w.]', '', value)
+
 
 if __name__ == "__main__":
   path = sys.argv[1]
@@ -17,6 +23,17 @@ if __name__ == "__main__":
 
     with open('output/data.json', 'w') as file:
       file.write(reader.to_json())
+
+    # Save Pallete files (for aseprite).
+    cset_colors = reader.csets['cset_colors']
+    for i in range(len(cset_colors)):
+      colors = cset_colors[i]
+      if all(r + g + b == 0 for (r, g, b, a) in colors):
+        break
+
+      gpl_text = 'GIMP Palette\nChannels: RGBA\n#\n' + '\n'.join([f'{r} {g} {b} {a} Untitled' for (r, g, b, a) in colors])
+      with open(f'output/cset-{i}.gpl', 'w') as file:
+        file.write(gpl_text)
 
     # Save images.
 
@@ -46,15 +63,19 @@ if __name__ == "__main__":
             x = spritesheet_x + tx
             y = spritesheet_y + ty
 
-            if (cset_offset == 0):
-              pixels[x,y] = (0, 0, 0, 0)
+            EXPORT_WITH_CSET = None
+            # EXPORT_WITH_CSET = 3
+            if EXPORT_WITH_CSET != None:
+              if (cset_offset == 0):
+                pixels[x,y] = (0, 0, 0, 0)
+              else:
+                pixels[x,y] = (0, 0, cset_offset)
             else:
-              cset_index = 3 # hardcoded ...
-              color_index = cset_index * 16 * 3 + cset_offset * 3
-              r = reader.csets['color_data'][color_index + 0] * 4
-              g = reader.csets['color_data'][color_index + 1] * 4
-              b = reader.csets['color_data'][color_index + 2] * 4
-              pixels[x,y] = (r, g, b)
+              if (cset_offset == 0):
+                pixels[x,y] = (0, 0, 0, 0)
+              else:
+                color = cset_colors[EXPORT_WITH_CSET][cset_offset]
+                pixels[x,y] = color
 
       img.save(f'output/tiles_{str(page_index).zfill(3)}.png')
       page_index += 1

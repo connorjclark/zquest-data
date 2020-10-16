@@ -196,11 +196,10 @@ class Bytes:
   
   def read_str(self, n):
     raw = self.read(n)
-    try:
-      return raw.lstrip(b'\x00').rstrip(b'\x00').decode('utf-8')
-    except:
-      # :/
-      return str(raw.lstrip(b'\x00').rstrip(b'\x00'))
+    if raw.find(b'\x00') != -1:
+      return raw[0:raw.index(b'\x00')].decode('utf-8', errors='ignore')
+    else:
+      return raw.decode('utf-8', errors='ignore')
 
   def debug(self, n):
     b = self.read(n)
@@ -459,10 +458,31 @@ class ZeldaClassicReader:
         'count': section_bytes.read_array(1, 3),
         'speed': section_bytes.read_array(1, 3),
       })
+    
+    i = 0
+    cset_colors = []
+    while i < len(color_data):
+      colors = []
+      for _ in range(16):
+        r = color_data[i] * 4
+        i += 1
+        g = color_data[i] * 4
+        i += 1
+        b = color_data[i] * 4
+        i += 1
+        a = 0 if _ == 0 else 255
+        colors.append((r, g, b, a))
+      
+      if all(r + g + b == 0 for (r, g, b, a) in colors):
+        break
+      
+      cset_colors.append(colors)
+
     self.csets = {
       'color_data': color_data,
       'palnames': palnames,
       'cycles': cycles,
+      'cset_colors': cset_colors,
     }
   
   def read_dmaps(self, section_bytes, section_version, section_cversion):

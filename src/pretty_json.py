@@ -1,7 +1,7 @@
 import json
 import numpy
 
-INDENT = 3
+INDENT = 2
 SPACE = " "
 NEWLINE = "\n"
 
