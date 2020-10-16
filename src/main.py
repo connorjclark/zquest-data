@@ -65,7 +65,7 @@ if __name__ == "__main__":
 
             EXPORT_WITH_CSET = None
             # EXPORT_WITH_CSET = 3
-            if EXPORT_WITH_CSET != None:
+            if EXPORT_WITH_CSET is None:
               if (cset_offset == 0):
                 pixels[x,y] = (0, 0, 0, 0)
               else:
