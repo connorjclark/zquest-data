@@ -1,5 +1,6 @@
 import sys
 import re
+import struct
 from extract import *
 from PIL import Image
 
@@ -7,6 +8,27 @@ def slugify(value):
   value = str(value).strip().replace(' ', '_')
   return re.sub(r'(?u)[^-\w.]', '', value)
 
+def save_midi_file(zc_midi, tracks, path):
+  midi_format = 0 if len(tracks) == 1 else 1
+  args = [
+    b'MThd',
+    6,
+    midi_format,
+    len(tracks),
+    zc_midi['divisions'],
+  ]
+  data = struct.pack('>4sLhhh', *args)
+
+  for track in tracks:
+    args = [
+      b'MTrk',
+      len(track),
+    ]
+    data += struct.pack('>4sL', *args)
+    data += track
+
+  with open(path, 'wb') as file:
+    file.write(data)
 
 if __name__ == "__main__":
   path = sys.argv[1]
@@ -20,6 +42,12 @@ if __name__ == "__main__":
 
     print('num tiles', len(reader.tiles))
     print('num combos', len(reader.combos))
+
+    for i in range(len(reader.midis['tunes'])):
+      zc_midi = reader.midis['tunes'][i]
+      if 'title' in zc_midi:
+        title = zc_midi['title']
+        save_midi_file(zc_midi, reader.midi_tracks[i], f'output/midi{i}-{slugify(title)}.mid')
 
     with open('output/data.json', 'w') as file:
       file.write(reader.to_json())

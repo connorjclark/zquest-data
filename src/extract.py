@@ -182,8 +182,8 @@ class Bytes:
   def read_int(self):
     return unpack('<H', self.read(2))[0]
   
-  def read_int_big_endian(self):
-    return unpack('<H', self.read(2))[0]
+  def read_signed_int_big_endian(self):
+    return unpack('>h', self.read(2))[0]
 
   def read_long(self):
     return unpack('<I', self.read(4))[0]
@@ -1104,7 +1104,7 @@ class ZeldaClassicReader:
       if tune['format'] != 0:
         raise 'bad format'
 
-      tune['num_divisions'] = section_bytes.read_int_big_endian()
+      tune['divisions'] = section_bytes.read_signed_int_big_endian()
 
       midi_tracks[i] = []
       for _ in range(32):
