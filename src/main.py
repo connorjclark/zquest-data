@@ -9,17 +9,23 @@ def slugify(value):
   return re.sub(r'(?u)[^-\w.]', '', value)
 
 def save_midi_file(zc_midi, tracks, path):
-  midi_format = 0 if len(tracks) == 1 else 1
+  tracks_with_data = []
+  for track in tracks:
+    if len(track) == 0:
+      break
+    tracks_with_data.append(track)
+
+  midi_format = 0 if len(tracks_with_data) == 1 else 1
   args = [
     b'MThd',
     6,
     midi_format,
-    len(tracks),
+    len(tracks_with_data),
     zc_midi['divisions'],
   ]
   data = struct.pack('>4sLhhh', *args)
-
-  for track in tracks:
+  
+  for track in tracks_with_data:
     args = [
       b'MTrk',
       len(track),
@@ -47,7 +53,7 @@ if __name__ == "__main__":
       zc_midi = reader.midis['tunes'][i]
       if 'title' in zc_midi:
         title = zc_midi['title']
-        save_midi_file(zc_midi, reader.midi_tracks[i], f'output/midi{i}-{slugify(title)}.mid')
+        save_midi_file(zc_midi, reader.midi_tracks[i], f'output/midi{i}.mid')
 
     with open('output/data.json', 'w') as file:
       file.write(reader.to_json())
