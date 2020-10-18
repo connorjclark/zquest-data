@@ -115,14 +115,15 @@ class Version:
       if self.zelda_version != None or other.zelda_version != None:
         raise 'Invalid input'
     
-    if self.build == None or other.build == None:
-      if self.build != None or other.build != None:
-        raise 'Invalid input'
-    
     if self.zelda_version > other.zelda_version:
       return 1
     elif self.zelda_version < other.zelda_version:
       return -1
+    
+    if self.build == None or other.build == None:
+      if self.build != None or other.build != None:
+        # TODO: eh, this is wrong and will break eventually.
+        raise 'Invalid input'
     
     if self.build > other.build:
       return 1
@@ -215,6 +216,25 @@ class Bytes:
     for byte in b:
       print(byte)
     self.f.seek(-n, 1)
+
+def read_data(dest, section_version, descriptors):
+  for key, read in descriptors.items():
+    if key in dest:
+      raise f'already using key: {key}'
+
+    value = None
+    if isinstance(read, dict):
+      for version_threshold, read_option in read.items():
+        if section_version >= version_threshold:
+          value = read_option()
+          if isinstance(value, tuple):
+            value = value[0]
+          break
+    else:
+      value = read()
+
+    if value is not None:
+      dest[key] = value
 
 
 class ZeldaClassicReader:
@@ -496,90 +516,80 @@ class ZeldaClassicReader:
   def read_dmaps(self, section_bytes, section_version, section_cversion):
     num_dmaps = section_bytes.read_int()
 
+    self.dmaps = []
     for _ in range(num_dmaps):
-      map_ = section_bytes.read_byte()
+      dmap = {}
+      self.dmaps.append(dmap)
 
-      if section_version <= 4:
-        level = section_bytes.read_byte()
-      else:
-        level = section_bytes.read_int()
+      if section_version < 9:
+        raise 'TODO'
       
-      xoff = section_bytes.read_byte()
-      
-      compass = section_bytes.read_byte()
-      
-      if section_version > 8:
-        color = section_bytes.read_int()
-      else:
-        color = section_bytes.read_byte()
-      
-      midi = section_bytes.read_byte()
-      
-      cont = section_bytes.read_byte()
-      
-      type_ = section_bytes.read_byte()
-
-      grid = section_bytes.read_array(1, 8)
+      read_data(dmap, section_version, {
+        'map': lambda: section_bytes.read_byte(),
+        'level': {
+          5: lambda: section_bytes.read_int(),
+          0: lambda: section_bytes.read_byte(),
+        },
+        'xoff': lambda: section_bytes.read_byte(),
+        'compass': lambda: section_bytes.read_byte(),
+        'color': {
+          9: lambda: section_bytes.read_int(),
+          0: lambda: section_bytes.read_byte(),
+        },
+        'midi': lambda: section_bytes.read_byte(),
+        'cont': lambda: section_bytes.read_byte(),
+        'type': lambda: section_bytes.read_byte(),
+        'grid': lambda: section_bytes.read_array(1, 8),
+      })
 
       if self.version < Version(zelda_version=0x192, build=41):
         raise 'TODO'
 
-      name = section_bytes.read_str(21)
-      title = section_bytes.read_str(21)
-      intro = section_bytes.read_str(73)
+      read_data(dmap, section_version, {
+        'name': lambda: section_bytes.read_str(21),
+        'title': lambda: section_bytes.read_str(21),
+        'intro': lambda: section_bytes.read_str(73),
+      })
 
-      minimap = []
+      dmap['minimap'] = []
       for __ in range(4):
         entry = {}
-        if section_version >= 11:
-          entry['tile'] = section_bytes.read_long()
-        else:
-          entry['tile'] = section_bytes.read_int()
-        entry['cset'] = section_bytes.read_byte()
-        minimap.append(entry)
+        dmap['minimap'].append(entry)
 
-      if section_version > 1:
-        tmusictrack = section_bytes.read_byte()
-        active_subscreen = section_bytes.read_byte()
-        passive_subscreen = section_bytes.read_byte()
+        read_data(entry, section_version, {
+          'tile': {
+            11: lambda: section_bytes.read_long(),
+            0: lambda: section_bytes.read_int(),
+          },
+          'cset': lambda: section_bytes.read_byte(),
+        })
       
-      if section_version > 2:
-        di = section_bytes.read_array(1, 32)
+      read_data(dmap, section_version, {
+        'tmusic':                lambda: section_bytes.read_array(1, 56),
+        'tmusictrack':       {2: lambda: section_bytes.read_byte()},
+        'active_subscreen':  {2: lambda: section_bytes.read_byte()},
+        'passive_subscreen': {2: lambda: section_bytes.read_byte()},
+        'di':                {3: lambda: section_bytes.read_array(1, 32)},
+        'flags': {
+          6: lambda: section_bytes.read_long(),
+          4: lambda: section_bytes.read_byte(),
+        },
+      })
       
-      if section_version >= 6:
-        flags = section_bytes.read_long()
-      elif section_version > 3:
-        temp = section_bytes.read_byte()
-      else:
-        raise 'TODO'
+      if self.version > Version(zelda_version=0x192, build=41) and self.version < Version(zelda_version=0x193):
+        # padding
+        section_bytes.read_byte()
       
-      if section_version < 7:
-        raise 'TODO'
-      
-      if section_version < 8:
-        raise 'TODO'
-      
-      if section_version < 8:
-        raise 'TODO'
-      
-      if self.version > Version(zelda_version=0x192, build=41):
-        padding = section_bytes.read_byte()
-      
-      if section_version >= 10:
-        sideview = section_bytes.read_byte()
-      
-      if section_version >= 12:
-        script = section_bytes.read_int()
-        section_bytes.read_array(4, 8)
-      
-      if section_version >= 13:
-        section_bytes.read_array(1, 8 * 65)
-      
-      if section_version >= 14:
-        section_bytes.read_int()
-        section_bytes.read_int()
-        section_bytes.read_array(4, 8)
-        section_bytes.read_array(1, 8 * 65)
+      read_data(dmap, section_version, {
+        'sideview':           {10: lambda: section_bytes.read_byte()},
+        'script':             {12: lambda: section_bytes.read_int()},
+        'initD':              {12: lambda: section_bytes.read_array(4, 8)},
+        'initD_label':        {13: lambda: section_bytes.read_array(1, 8 * 65)},
+        'active_sub_script':  {14: lambda: section_bytes.read_int()},
+        'passive_sub_script': {14: lambda: section_bytes.read_int()},
+        'sub_initD':          {14: lambda: section_bytes.read_array(4, 8)},
+        'sub_initD_label':    {14: lambda: section_bytes.read_array(1, 8 * 65)},
+      })
   
   def read_maps(self, section_bytes, section_version, section_cversion):
     def read_screen():
@@ -1120,7 +1130,7 @@ class ZeldaClassicReader:
       'combos': self.combos,
       'tiles': self.tiles,
       'csets': self.csets,
-      # 'dmaps': self.dmaps,
+      'dmaps': self.dmaps,
       'maps': self.maps,
       'guys': self.guys,
       'weapons': self.weapons,
