@@ -502,7 +502,7 @@ class ZeldaClassicReader:
         colors.append((r, g, b, a))
       
       if all(r + g + b == 0 for (r, g, b, a) in colors):
-        break
+        colors = []
       
       cset_colors.append(colors)
 
