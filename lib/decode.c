@@ -13,6 +13,32 @@ static int32_t pvalue[ENC_METHOD_MAX] = {0x62E9, 0x7D14, 0x1A82, 0x02BB, 0xE09C}
 static int32_t qvalue[ENC_METHOD_MAX] = {0x3619, 0xA26B, 0xF03C, 0x7B12, 0x4E8F};
 static char datapwd[8] = {('l' + 11), ('o' + 22), ('n' + 33), ('g' + 44), ('t' + 55), ('a' + 66), ('n' + 77), (0 + 88)};
 
+int32_t encrypt_id(long x, int new_format)
+{
+   char* the_password = datapwd;
+   int32_t mask = 0;
+   int i, pos;
+
+   printf("the_password: %s\n", the_password);
+   if (the_password[0]) {
+      for (i=0; the_password[i]; i++)
+	 mask ^= ((int32_t)the_password[i] << ((i&3) * 8));
+
+      for (i=0, pos=0; i<4; i++) {
+	 mask ^= (int32_t)the_password[pos++] << (24-i*8);
+	 if (!the_password[pos])
+	    pos = 0;
+      }
+
+      if (new_format)
+	 mask ^= 42;
+   }
+
+   printf("mask: %d\n", mask);
+
+   return x ^ mask;
+}
+
 void resolve_password(char *pwd)
 {
   for(int i=0; i<8; i++)
@@ -40,8 +66,16 @@ int rand_007(int method)
 }
 
 PACKFILE *pack_fopen_password(const char *filename, const char *mode, const char *password) {
-  resolve_password(datapwd);
 	packfile_password(password);
+
+  #define F_PACK_MAGIC    0x736C6821L    /* magic number for packed files */
+  #define F_NOPACK_MAGIC  0x736C682EL    /* magic number for autodetect */
+
+  encrypt_id(F_PACK_MAGIC, TRUE);
+  encrypt_id(F_NOPACK_MAGIC, TRUE);
+  encrypt_id(F_PACK_MAGIC, FALSE);
+  encrypt_id(F_NOPACK_MAGIC, FALSE);
+
 	PACKFILE *new_pf = pack_fopen(filename, mode);
 	packfile_password("");
 	return new_pf;
@@ -220,6 +254,7 @@ int decode_file_007(const char *srcfile, const char *destfile, const char *heade
 
   seed += c & 255;
   seed ^= enc_mask[method];
+  printf("decode_007 seed %d\n", seed);
 
   // decode the data
   for (i = 0; i < size; i++)
@@ -251,11 +286,22 @@ int decode_file_007(const char *srcfile, const char *destfile, const char *heade
 
     tog ^= 1;
 
+    if (i == 5){
+      printf("decode_007 ==== i = %d\n", i);
+      printf("c BEFORE %d\n", c);
+    }
     c &= 255;
+    if (i == 5){
+      printf("c AFTER %d\n", c);
+    }
     c1 += c;
     c2 = (c2 << 4) + (c2 >> 12) + c;
     // if (i % 100 == 0) printf("i = %ld c = %c\n", i, c);
     fputc(c, dest);
+
+    if (i < 20) {
+      printf("decode_007 result %d = %d\n", i, c);
+    }
   }
 
   // read checksums
@@ -368,8 +414,16 @@ error:
   return err;
 }
 
+extern static char the_password[256] = EMPTY_STRING;
+bool resolvedpwd = false;
+
 int decode(const char *data, char *output, long size, int32_t method)
 {
+  if (!resolvedpwd) {
+    resolve_password(datapwd);
+    resolvedpwd = true;
+  }
+
   // First, unencrypt the data using `decode_file_007`, storing the result
   // on disk at `destfname` (use the filesystem so that the original decoding
   // function doesn't have to change at all).
@@ -395,6 +449,27 @@ int decode(const char *data, char *output, long size, int32_t method)
     // printf("err decode_file_007: %d\n", ret);
     return ret;
   }
+
+  printf("datapwd: ");
+  for (int i = 0; i < sizeof datapwd; i++) {
+    // printf("%x (%d) ", datapwd[i], datapwd[i]);
+    printf("%d ", datapwd[i]);
+  }
+  printf("\n");
+
+  FILE* f = fopen(destfname, "rb");
+  int decodedlen = 0;
+  while (true) {
+    int byte = fgetc(f);
+    if (byte == EOF) break;
+
+    if (decodedlen < 20) {
+      printf("byte %d = %d\n", decodedlen, byte);
+    }
+    decodedlen += 1;
+  }
+  printf("len = %d\n", decodedlen);
+  fclose(f);
 
   // Second, decompress.
   PACKFILE *decoded = pack_fopen_password(destfname, F_READ_PACKED, datapwd);

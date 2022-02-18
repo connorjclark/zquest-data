@@ -351,6 +351,8 @@ class ZeldaClassicReader:
     }
 
     if size > self.b.length - self.b.bytes_read:
+      # TODO: I think this happens because the rest of the data is just trash bytes...
+      # all 0s or 0xFF... Maybe decoding code is wrong?
       print('section size is bigger than rest of data, clamping')
       size = self.b.length - self.b.bytes_read
 
