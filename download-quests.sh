@@ -1,7 +1,6 @@
 mkdir -p quests
 
-# 1..768
-for i in {1..100}
+for i in {1..768}
 do
   if [ ! -d "quests/$i" ]
   then
