@@ -1,10 +1,26 @@
-// https://github.com/ArmageddonGames/ZeldaClassic/blob/023dd17eaf6a969f47650cb6591cedd0baeaab64/src/zsys.cpp
+/*
+  Decodes a ZeldaClassic .qst file.
+
+  A qst file is encoded in two layers.
+  1) The top layer is from Zelda Classic. It is defined by the method decode_file_007.
+     [0-24]    Preamble "Zelda Classic Quest File"
+     [25-28]   Initial decoding seed value.
+     [29-X]    Allegro-encoded payload (AKA "packed" file)
+     [last 4]  Checksum
+  2) The bottom layer is a "compressed packed file" from Allegro 4. The entire payload
+     is XOR'd with a password. Once that is done, the first four bytes are "slh!", followed
+     by a lzss compressed representation of the payload.
+
+  Helpful links:
+  - https://www.allegro.cc/forums/thread/479372
+  - decode_file_007 https://github.com/ArmageddonGames/ZeldaClassic/blob/023dd17eaf6a969f47650cb6591cedd0baeaab64/src/zsys.cpp#L492
+*/
 
 #include <stdbool.h>
 #include <stdio.h>
 #include <allegro/file.h>
+#include <emscripten.h>
 
-#define EOF (-1)
 #define ENC_METHOD_MAX 5
 
 static int32_t seed = 0;
@@ -13,10 +29,14 @@ static int32_t pvalue[ENC_METHOD_MAX] = {0x62E9, 0x7D14, 0x1A82, 0x02BB, 0xE09C}
 static int32_t qvalue[ENC_METHOD_MAX] = {0x3619, 0xA26B, 0xF03C, 0x7B12, 0x4E8F};
 static char datapwd[8] = {('l' + 11), ('o' + 22), ('n' + 33), ('g' + 44), ('t' + 55), ('a' + 66), ('n' + 77), (0 + 88)};
 
+bool has_resolved_pwd = false;
 void resolve_password(char *pwd)
 {
+  if (has_resolved_pwd) return;
+
   for(int i=0; i<8; i++)
     pwd[i]-=(i+1)*11;
+  has_resolved_pwd = true;
 }
 
 int rand_007(int method)
@@ -47,196 +67,56 @@ PACKFILE *pack_fopen_password(const char *filename, const char *mode, const char
 	return new_pf;
 }
 
-uint64_t file_size_ex_password(const char *filename, const char *password)
-{
-  packfile_password(password);
-  uint64_t new_pf = file_size_ex(filename);
-  packfile_password("");
-  return new_pf;
+short fget_2byteint(FILE* f) {
+  int byte1 = fgetc(f);
+  int byte2 = fgetc(f);
+  return (byte1 << 8) + byte2;
 }
 
-int decode_file_007(const char *srcfile, const char *destfile, const char *header, int method, bool packed, const char *password)
+int fget_4byteint(FILE* f) {
+  int byte1 = fgetc(f);
+  int byte2 = fgetc(f);
+  int byte3 = fgetc(f);
+  int byte4 = fgetc(f);
+  return (byte1 << 24) + (byte2 << 16) + (byte3 << 8) + byte4;
+}
+
+int decode(const char *qst_file, const char *destfname, int32_t method)
 {
-  FILE *normal_src = NULL, *dest = NULL;
-  PACKFILE *packed_src = NULL;
-  int tog = 0, c, r = 0, err;
-  long size, i;
-  short c1 = 0, c2 = 0, check1, check2;
+  const char *preamble = "Zelda Classic Quest File";
+  int c;
 
-  // open files
-  size = file_size_ex_password(srcfile, password);
-
-  if (size < 1)
-  {
-    return 1;
-  }
-
-  size -= 8; // get actual data size, minus key and checksums
-
-  if (size < 1)
-  {
-    return 3;
-  }
-
-  if (!packed)
-  {
-    normal_src = fopen(srcfile, "rb");
-
-    if (!normal_src)
-    {
-      return 1;
-    }
-  }
-  else
-  {
-    packed_src = pack_fopen_password(srcfile, F_READ_PACKED, password);
-
-    if (errno == EDOM)
-    {
-      packed_src = pack_fopen_password(srcfile, F_READ, password);
-    }
-
-    if (!packed_src)
-    {
+  FILE* f = fopen(qst_file, "r");
+  fseek(f, 0, SEEK_END);
+  uint64_t size = ftell(f);
+  fseek(f, 0, SEEK_SET);
+  
+  // First check that the file starts with the correct preamble.
+  for (int i = 0; preamble[i]; i++) {
+    c = fgetc(f);
+    if (c != preamble[i]) {
       return 1;
     }
   }
 
-  dest = fopen(destfile, "wb");
-
-  if (!dest)
-  {
-    if (packed)
-    {
-      pack_fclose(packed_src);
-    }
-    else
-    {
-      fclose(normal_src);
-    }
-
-    return 2;
-  }
-
-  // read the header
-  err = 4;
-
-  if (header)
-  {
-    for (i = 0; header[i]; i++)
-    {
-      if (packed)
-      {
-        if ((c = pack_getc(packed_src)) == EOF)
-        {
-          goto error;
-        }
-      }
-      else
-      {
-        if ((c = fgetc(normal_src)) == EOF)
-        {
-          goto error;
-        }
-      }
-
-      // if (i < 20) printf("%c\n", c);
-      if ((c & 255) != header[i])
-      {
-        err = 6;
-        goto error;
-      }
-
-      --size;
-    }
-  }
-
-  // read the key
-  if (packed)
-  {
-    if ((c = pack_getc(packed_src)) == EOF)
-    {
-      goto error;
-    }
-  }
-  else
-  {
-    if ((c = fgetc(normal_src)) == EOF)
-    {
-      goto error;
-    }
-  }
-
-  seed = c << 24;
-
-  if (packed)
-  {
-    if ((c = pack_getc(packed_src)) == EOF)
-    {
-      goto error;
-    }
-  }
-  else
-  {
-    if ((c = fgetc(normal_src)) == EOF)
-    {
-      goto error;
-    }
-  }
-
-  seed += (c & 255) << 16;
-
-  if (packed)
-  {
-    if ((c = pack_getc(packed_src)) == EOF)
-    {
-      goto error;
-    }
-  }
-  else
-  {
-    if ((c = fgetc(normal_src)) == EOF)
-    {
-      goto error;
-    }
-  }
-
-  seed += (c & 255) << 8;
-
-  if (packed)
-  {
-    if ((c = pack_getc(packed_src)) == EOF)
-    {
-      goto error;
-    }
-  }
-  else
-  {
-    if ((c = fgetc(normal_src)) == EOF)
-    {
-      goto error;
-    }
-  }
-
-  seed += c & 255;
+  // Get the seed value used to decode the top layer of encoding.
+  seed = fget_4byteint(f);
   seed ^= enc_mask[method];
 
-  // decode the data
-  for (i = 0; i < size; i++)
-  {
-    if (packed)
-    {
-      if ((c = pack_getc(packed_src)) == EOF)
-      {
-        goto error;
-      }
-    }
-    else
-    {
-      if ((c = fgetc(normal_src)) == EOF)
-      {
-        goto error;
-      }
+  // 4 bytes for seed, 4 bytes for checksum
+  size -= 8;
+  size -= strlen(preamble);
+
+  FILE* packfile_data = fopen("/tmp/packfile_data", "w");
+  bool tog = false;
+  int r = 0;
+  short c1 = 0;
+  short c2 = 0;
+  for (int i = 0; i < size; i++) {
+    c = fgetc(f);
+    if (c == EOF) {
+      // Should never happen.
+      return 2;
     }
 
     if (tog)
@@ -249,178 +129,58 @@ int decode_file_007(const char *srcfile, const char *destfile, const char *heade
       c ^= r;
     }
 
-    tog ^= 1;
+    tog = !tog;
 
     c &= 255;
     c1 += c;
     c2 = (c2 << 4) + (c2 >> 12) + c;
-    // if (i % 100 == 0) printf("i = %ld c = %c\n", i, c);
-    fputc(c, dest);
+    fputc(c, packfile_data);
   }
 
-  // read checksums
-  if (packed)
-  {
-    if ((c = pack_getc(packed_src)) == EOF)
-    {
-      goto error;
-    }
-  }
-  else
-  {
-    if ((c = fgetc(normal_src)) == EOF)
-    {
-      goto error;
-    }
-  }
-
-  check1 = c << 8;
-
-  if (packed)
-  {
-    if ((c = pack_getc(packed_src)) == EOF)
-    {
-      goto error;
-    }
-  }
-  else
-  {
-    if ((c = fgetc(normal_src)) == EOF)
-    {
-      goto error;
-    }
-  }
-
-  check1 += c & 255;
-
-  if (packed)
-  {
-    if ((c = pack_getc(packed_src)) == EOF)
-    {
-      goto error;
-    }
-  }
-  else
-  {
-    if ((c = fgetc(normal_src)) == EOF)
-    {
-      goto error;
-    }
-  }
-
-  check2 = c << 8;
-
-  if (packed)
-  {
-    if ((c = pack_getc(packed_src)) == EOF)
-    {
-      goto error;
-    }
-  }
-  else
-  {
-    if ((c = fgetc(normal_src)) == EOF)
-    {
-      goto error;
-    }
-  }
-
-  check2 += c & 255;
-
-  // verify checksums
+  // Checksums.
+  short check1 = fget_2byteint(f);
+  short check2 = fget_2byteint(f);
   r = rand_007(method);
   check1 ^= r;
   check2 -= r;
   check1 &= 0xFFFF;
   check2 &= 0xFFFF;
-
-  if (check1 != c1 || check2 != c2)
-  {
-    err = 5;
-    goto error;
+  if (check1 != c1 || check2 != c2) {
+    return 3;
   }
 
-  if (packed)
-  {
-    pack_fclose(packed_src);
-  }
-  else
-  {
-    fclose(normal_src);
-  }
+  fclose(f);
+  fclose(packfile_data);
 
-  fclose(dest);
+  struct PACKFILE *packfile = pack_fopen_password("/tmp/packfile_data", F_READ_PACKED, datapwd);
+  f = fopen("/quests/input.qst.dat", "w");
+  while ((c = pack_getc(packfile)) != EOF) {
+    fputc(c, f);
+  }
+  fclose(f);
+
   return 0;
-
-error:
-
-  if (packed)
-  {
-    pack_fclose(packed_src);
-  }
-  else
-  {
-    fclose(normal_src);
-  }
-
-  fclose(dest);
-  delete_file(destfile);
-  return err;
 }
 
-int decode(const char *data, char *output, long size, int32_t method)
-{
-  // First, unencrypt the data using `decode_file_007`, storing the result
-  // on disk at `destfname` (use the filesystem so that the original decoding
-  // function doesn't have to change at all).
-  const char *header = "Zelda Classic Quest File";
+EMSCRIPTEN_KEEPALIVE
+int read_qst_file() {
+  const char* qstpath = "/quests/input.qst";
 
-  char srcfname[] = "/tmp/fileXXXXXX";
-  mkstemp(srcfname);
-  FILE* src = fopen(srcfname, "w");
-  for (int i = 0; i < size; i++)
-  {
-    fputc(data[i], src);
-  }
-  fclose(src);
-
-  char destfname[] = "/tmp/fileXXXXXX";
-  mkstemp(destfname);
-  fclose(fopen(destfname , "w"));
-  
-  // printf("decode_file_007(%s, %s)\n", srcfname, destfname);
-  int ret = decode_file_007(srcfname, destfname, header, method, false, datapwd);
-  if (ret != 0)
-  {
-    // printf("err decode_file_007: %d\n", ret);
-    return ret;
-  }
-
-  // Second, decompress.
-  PACKFILE *decoded = pack_fopen_password(destfname, F_READ_PACKED, datapwd);
-
-  // Copy from temporary to output buffer.
-  // FILE *decoded = fopen(destfname, "rb");
-  // TODO: shouldn't just guess how big the output will be ...
-  FILE *dest = fmemopen((void *)output, size * 5, "w");
-  // printf("size = %ld\n", size);
-  for (int i = 0; i < size*5; i++)
-  {
-    char c;
-    if ((c = pack_getc(decoded)) == EOF)
-    {
-      // printf("errno fgetc(decoded): %d at i = %d\n", c, i);
-      // printf("ferror fgetc(decoded): %d\n", ferror(decoded));
-      // fclose(decoded);
-      // return 11;
-      // break;
+  for (int32_t method = 4; method >= 0; method--) {
+    int result = decode(qstpath, "/quests/input.qst.dat", method);
+    if (result == 0) {
+      // All good!
+      return 0;
     }
 
-    // if (i < 20)
-    //   printf("c = %d %c\n", c, c);
-    // if (i > 880) printf("i = %d\n", i);
-    fputc(c, dest);
+    if (result == 3) {
+      // Bad method.
+      continue;
+    }
+
+    // Fatal error.
+    return result;
   }
-  pack_fclose(decoded);
-  return ret;
+
+  return -1;
 }

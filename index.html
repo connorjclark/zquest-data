@@ -12,21 +12,24 @@
         const buffer = await resp.arrayBuffer();
         const data = new Int8Array(buffer);
 
-        // Actual path on virtual fs does not matter. Hardcoded to "/quests/1st.quest"
+        // Actual path on virtual fs does not matter. Hardcoded to "/quests/input.quest"
         zc.FS.mkdir('/quests');
-        zc.FS.writeFile('/quests/1st.qst', data);
+        zc.FS.writeFile('/quests/input.qst', data);
 
         document.body.textContent = 'Reading quest file ...';
         setTimeout(() => {
-          const read_qst_file = zc.cwrap('read_qst_file', 'string', []);
+          const read_qst_file = zc.cwrap('read_qst_file', 'number', []);
           document.body.textContent = read_qst_file();
 
-          console.log(zc.FS.readFile('/quests/1st.qst.dat'));
-          console.log(new TextDecoder().decode(
-            zc.FS.readFile('/quests/1st.qst.dat').subarray(0, 20)
+          const el = document.createElement('pre');
+          document.body.append(el);
+          const bytes = zc.FS.readFile('/quests/input.qst.dat');
+          console.log(bytes);
+          el.textContent += (new TextDecoder().decode(
+            bytes.subarray(0, 10000)
           ));
-          console.log(new TextDecoder().decode(
-            zc.FS.readFile('/quests/1st.qst.dat')
+          el.textContent += (new TextDecoder().decode(
+            bytes
           ));
         });
       }
