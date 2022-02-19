@@ -1,5 +1,6 @@
 from struct import *
 import sys
+import traceback
 import json
 import math
 from decode_wrapper import *
@@ -241,6 +242,18 @@ class ZeldaClassicReader:
   def __init__(self, b):
     self.b = b
 
+    self.errors = []
+    self.combos = None
+    self.tiles = None
+    self.csets = None
+    self.dmaps = None
+    self.maps = None
+    self.guys = None
+    self.weapons = None
+    self.link_sprites = None
+    self.items = None
+    self.midis = None
+
 
   # https://github.com/ArmageddonGames/ZeldaClassic/blob/30c9e17409304390527fcf84f75226826b46b819/src/zq_class.cpp#L11817
   def read_qst(self):
@@ -357,7 +370,13 @@ class ZeldaClassicReader:
     section_bytes = Bytes(io.BytesIO(self.b.read(size)))
     if id in sections:
       print('read_section', id, size, section_version, section_cversion)
-      sections[id](section_bytes, section_version, section_cversion)
+
+      try:
+        sections[id](section_bytes, section_version, section_cversion)
+      except Exception as e:
+        print(e)
+        self.errors.append("".join(traceback.TracebackException.from_exception(e).format()))
+
       remaining = size - section_bytes.bytes_read
       if remaining != 0:
         print('section did not consume expected number of bytes. remaining:', remaining)
@@ -1127,6 +1146,7 @@ class ZeldaClassicReader:
 
   def to_json(self):
     data = {
+      'errors': self.errors,
       'combos': self.combos,
       'tiles': self.tiles,
       'csets': self.csets,
