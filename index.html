@@ -6,8 +6,7 @@
         const zc = await Module();
         window.zc = zc;
 
-        const questFilePath = '/test_data/bs/2.5/NewBS 3.1 - 1st Quest.qst';
-        // const questFilePath = '/test_data/Classic XD.qst';
+        const questFilePath = new URLSearchParams(window.location.search).get('quest') || '/test_data/bs/2.5/NewBS 3.1 - 1st Quest.qst';
         const resp = await fetch(questFilePath);
         const buffer = await resp.arrayBuffer();
         const data = new Int8Array(buffer);
@@ -26,10 +25,7 @@
           const bytes = zc.FS.readFile('/quests/input.qst.dat');
           console.log(bytes);
           el.textContent += (new TextDecoder().decode(
-            bytes.subarray(0, 10000)
-          ));
-          el.textContent += (new TextDecoder().decode(
-            bytes
+            bytes.subarray(0, 1000000)
           ));
         });
       }
