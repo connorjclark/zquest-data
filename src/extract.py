@@ -7,6 +7,7 @@ from decode_wrapper import *
 from pretty_json import *
 import io
 import os
+import re
 import numpy as np
 
 # https://github.com/ArmageddonGames/ZeldaClassic/blob/30c9e17409304390527fcf84f75226826b46b819/src/zdefs.h#L155
@@ -37,6 +38,36 @@ ID_ITEMDROPSETS = b'DROP'
 ID_FAVORITES = b'FAVS'
 ID_FFSCRIPT = b'FFSC'
 ID_SFX = b'SFX '
+
+SECTION_IDS = [
+  ID_HEADER,
+  ID_RULES,
+  ID_STRINGS,
+  ID_MISC,
+  ID_TILES,
+  ID_COMBOS,
+  ID_CSETS,
+  ID_MAPS,
+  ID_DMAPS,
+  ID_DOORS,
+  ID_ITEMS,
+  ID_WEAPONS,
+  ID_COLORS,
+  ID_ICONS,
+  ID_GRAPHICSPACK,
+  ID_INITDATA,
+  ID_GUYS,
+  ID_MIDIS,
+  ID_CHEATS,
+  ID_SAVEGAME,
+  ID_COMBOALIASES,
+  ID_LINKSPRITES,
+  ID_SUBSCREEN,
+  ID_ITEMDROPSETS,
+  ID_FAVORITES,
+  ID_FFSCRIPT,
+  ID_SFX,
+]
 
 # V_HEADER =  3
 # V_RULES = 15
@@ -345,6 +376,15 @@ class ZeldaClassicReader:
   def read_section(self):
     id, section_version, section_cversion = self.read_section_header()
     size = self.b.read_long()
+
+    # Sometimes there is garbage data between sections.
+    if not re.match("\w{3,4}", id.decode("ascii", errors="ignore")):
+      print(f"garbage section id: {id}, skipping ahead some bytes...")
+      while id not in SECTION_IDS:
+        self.b.bytes_read -= 12
+        self.b.bytes_read += 1
+        id, section_version, section_cversion = self.read_section_header()
+        size = self.b.read_long()
 
     if size > 0:
       print(id, size)
