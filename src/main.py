@@ -1,8 +1,9 @@
 import argparse
 import re
 import struct
-from extract import *
 from PIL import Image
+from bytes import Bytes
+from extract import ZeldaClassicReader
 
 parser = argparse.ArgumentParser()
 parser.add_argument('input', type=str)
