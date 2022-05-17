@@ -2,9 +2,49 @@ import os
 import io
 import re
 import traceback
+from collections import namedtuple
+from dataclasses import dataclass
 from struct import *
+from typing import List
 from decode_wrapper import py_decode
 from pretty_json import pretty_json_format
+
+def if_(bool, first, second):
+  return first if bool else second
+
+@dataclass
+class F:
+  name: str
+  type: str
+  arrayLength: int = None
+  only: bool = None
+
+def read_fields(bytes, fields: List[F]):
+  result = {}
+
+  for field in fields:
+    value = None
+
+    if field.arrayLength is not None:
+      value = []
+      for _ in range(field.arrayLength):
+        if field.type == 'I':
+          value.append(bytes.read_long())
+        elif field.type == 'H':
+          value.append(bytes.read_int())
+        elif field.type == 'B':
+          value.append(bytes.read_byte())
+    else:
+      if field.type == 'I':
+        value = bytes.read_long()
+      elif field.type == 'H':
+        value = bytes.read_int()
+      elif field.type == 'B':
+        value = bytes.read_byte()
+
+    result[field.name] = value
+
+  return result
 
 # https://github.com/ArmageddonGames/ZeldaClassic/blob/30c9e17409304390527fcf84f75226826b46b819/src/zdefs.h#L155
 ID_HEADER = b'HDR '
@@ -470,37 +510,46 @@ class ZeldaClassicReader:
   
   # https://github.com/ArmageddonGames/ZeldaClassic/blob/30c9e17409304390527fcf84f75226826b46b819/src/qst.cpp#L13150
   def read_combos(self, section_bytes, section_version, section_cversion):
-    all_descriptors = [
-      # TODO: determine which versions each key was added in.
-      {'version': 0, 'key': 'tile', 'read': lambda: section_bytes.read_long() if section_version >= 11 else section_bytes.read_int()},
-      {'version': 0, 'key': 'flip', 'read': lambda: section_bytes.read_byte()},
-      {'version': 0, 'key': 'walk', 'read': lambda: section_bytes.read_byte()},
-      {'version': 0, 'key': 'type', 'read': lambda: section_bytes.read_byte()},
-      {'version': 0, 'key': 'csets', 'read': lambda: section_bytes.read_byte()},
-      {'version': 0, 'key': 'frames', 'read': lambda: section_bytes.read_byte()},
-      {'version': 0, 'key': 'speed', 'read': lambda: section_bytes.read_byte()},
-      {'version': 0, 'key': 'nextcombo', 'read': lambda: section_bytes.read_int()},
-      {'version': 0, 'key': 'nextcset', 'read': lambda: section_bytes.read_byte()},
-      {'version': 0, 'key': 'flag', 'read': lambda: section_bytes.read_byte()},
-      {'version': 0, 'key': 'skipanim', 'read': lambda: section_bytes.read_byte()},
-      {'version': 0, 'key': 'nexttimer', 'read': lambda: section_bytes.read_int()},
-      {'version': 0, 'key': 'skipanimy', 'read': lambda: section_bytes.read_byte()},
-      {'version': 0, 'key': 'animflags', 'read': lambda: section_bytes.read_byte()},
-      # Not tested.
-      # {'version': 0, 'key': 'attributes', 'read': lambda: section_bytes.read_array(4, NUM_COMBO_ATTRIBUTES)},
-      # {'version': 0, 'key': 'usrflags', 'read': lambda: section_bytes.read_long()},
-      # {'version': 0, 'key': 'triggerflags', 'read': lambda: section_bytes.read_array(4, 3)},
-      # {'version': 12, 'key': 'triggerlevel', 'read': lambda: section_bytes.read_long()},
+    # TODO: figure out a really nice data model for defining these sections
+    # So far this is just really basic and wouldn't work for other sections:
+    fields = [
+      F(name='tile', type=if_(section_version >= 11, 'I', 'H')),
+      F(name='flip', type='B' ),
+      F(name='walk', type='B' ),
+      F(name='type', type='B' ),
+      F(name='csets', type='B' ),
+      F(name='_padding', type='2s', only= self.version.zelda_version < 0x193 ),
+      F(name='_padding', type='16s', only= self.version.zelda_version == 0x191 ),
+      F(name='frames', type='B' ),
+      F(name='speed', type='B' ),
+      F(name='nextcombo', type='H' ),
+      F(name='nextcset', type='B' ),
+      F(name='flag', type='B', only= section_version >= 3 ),
+      F(name='skipanim', type='B', only= section_version >= 4 ),
+      F(name='nexttimer', type='H', only= section_version >= 4 ),
+      F(name='skipanimy', type='B', only= section_version >= 5 ),
+      F(name='animflags', type='B', only= section_version >= 6 ),
+      F(name='attributes', arrayLength= 4, type='I', only= section_version >= 8 ),
+      F(name='usrflags', type='I', only= section_version >= 8 ),
+
+      F(name='triggerFlags', arrayLength= 2, type='I', only= section_version == 9 ),
+      F(name='triggerLevel', type='I', only= section_version == 9 ),
+      F(name='triggerFlags', arrayLength= 3, type='I', only= section_version >= 10 ),
+      F(name='triggerLevel', type='I', only= section_version >= 10 ),
+
+      F(name='label', arrayLength= 11, type='B', only= section_version >= 12 ),
+      F(name='_padding', type='11s', only= self.version.zelda_version < 0x193 ),
+      F(name='attribytes', arrayLength= 4, type='B', only= section_version >= 13 ),
+      F(name='script', type='H', only= section_version >= 14 ),
+      F(name='initd', arrayLength= 2, type='I', only= section_version >= 14 ),
     ]
-    descriptors = [x for x in all_descriptors if self.version.zelda_version >= x['version']]
+
+    fields = [f for f in fields if f.only is not False]
     
     combos = []
     num_combos = section_bytes.read_int()
     for _ in range(num_combos):
-      combo = {}
-      for descriptor in descriptors:
-        combo[descriptor['key']] = descriptor['read']()
-      combos.append(combo)
+      combos.append(read_fields(section_bytes, fields))
     
     self.combos = combos
   
