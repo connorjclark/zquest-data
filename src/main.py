@@ -1,5 +1,4 @@
 import argparse
-import sys
 import re
 import struct
 from extract import *
@@ -48,7 +47,7 @@ if __name__ == "__main__":
   path = options.input
   with open(path, "rb") as f:
     b = Bytes(f)
-    reader = ZeldaClassicReader(b)
+    reader = ZeldaClassicReader(b, path)
     if path.endswith('.qst'):
       reader.read_qst()
     else:

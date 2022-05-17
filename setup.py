@@ -1,46 +1,39 @@
+from setuptools.command.install import install
 from distutils.core import setup
 from distutils.extension import Extension
 from Cython.Build import cythonize
 
-# allegro_source_files = [
-#   'allegro.c',
-#   'file.c',
-#   # 'unix/ufile.c',
-#   'lzss.c',
-#   'libc.c',
-#   'unicode.c',
-#   'config.c',
-#   'mac/mdrv.c',
-#   # 'mac/msnd.c',
-#   # 'system.c',
-# ]
-# allegro_sources = [f'third_party/allegro/src/{x}' for x in allegro_source_files]
+class MyInstall(install):
+  def run(self):
+    # with tempfile.TemporaryDirectory() as tmpdir:
+    #   print('created temporary directory', tmpdir)
+      # subprocess.run(['git', 'clone', '--branch', '4.4.3.1', 'https://github.com/liballeg/allegro5.git', tmpdir], cwd=tmpdir)
+      # subprocess.run(['cmake', '.'], cwd=tmpdir)
+      # subprocess.run(['make'], cwd=tmpdir)
+      # subprocess.run(['make', 'install'], cwd=tmpdir)
+      # subprocess.run(['ldconfig'], cwd=tmpdir)
 
-# allegro_include_files = [
-#   'system.h',
-#   'timer.h',
-#   'keyboard.h',
-#   'mouse.h',
-#   'gfx.h',
-#   'midi.h',
-#   'digi.h',
-#   'internal/alconfig.h',
-#   'platform/almac.h',
-# ]
-# allegro_includes = [f'third_party/allegro/include/allegro/{x}' for x in allegro_include_files]
+    install.run(self)
+
 
 decode_extension = Extension(
   name='decode_wrapper',
-  sources=['src/decode_wrapper.pyx'],
+  python_requires='>3.10.0',
+  sources=[
+    'src/decode_wrapper.pyx',
+    'lib/decode.c',
+    'lib/allegro_shims.c',
+    'third_party/allegro/src/unicode.c',
+    'third_party/allegro/src/file.c',
+    'third_party/allegro/src/lzss.c',
+    'third_party/allegro/src/libc.c',
+  ],
   include_dirs=['lib', 'third_party/allegro/include'],
-  # includes=["third_party/allegro/include/allegro/platform/almac.h"],
-  # extra_compile_args=[f'-include{x}' for x in allegro_includes]
-  # extra_compile_args=['-undefined dynamic_lookup'],
-  libraries=['alleg'],
-  # library_dirs=['/usr/local/lib'],
-  # extra_objects=["third_party/allegro/lib/liballeg.so.4.4.3"]
 )
 setup(
   name='decode_wrapper',
+  version='0.1.0',
+  install_requires=['numpy', 'Pillow'],
   ext_modules=cythonize([decode_extension], language_level = '3'),
+  cmdclass={'install': MyInstall},
 )

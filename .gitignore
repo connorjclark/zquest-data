@@ -6,3 +6,4 @@ build
 third_party
 output
 quests
+*.egg-info

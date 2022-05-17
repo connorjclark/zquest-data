@@ -1,11 +1,30 @@
 import cython
+from cpython.version cimport PY_MAJOR_VERSION
 
-cdef extern from "decode.c":
-  int decode(const char *data, char *output, long size, int method)
+cdef unicode _text(s):
+    if type(s) is unicode:
+        # Fast path for most common case(s).
+        return <unicode>s
+
+    elif PY_MAJOR_VERSION < 3 and isinstance(s, bytes):
+        # Only accept byte strings as text input in Python 2.x, not in Py3.
+        return (<bytes>s).decode('ascii')
+
+    elif isinstance(s, unicode):
+        # We know from the fast path above that 's' can only be a subtype here.
+        # An evil cast to <unicode> might still work in some(!) cases,
+        # depending on what the further processing does.  To be safe,
+        # we can always create a copy instead.
+        return unicode(s)
+
+    else:
+        raise TypeError("Could not convert to unicode.")
+
+cdef extern from "decode.h":
+  int decode(const char* qstpath, const char* outpath)
 
 
-def py_decode(const char *data, long size, int method):
-  # minus 8 bytes for seed and checksum
-  cdef char [::1] output = cython.view.array(shape=(size*5,), itemsize=1, format="B")
-  err = decode(data, &output[0], size, method)
-  return (err, bytes(output))
+def py_decode(qstpath, outpath):
+  qstpath = qstpath.encode('utf-8')
+  outpath = outpath.encode('utf-8')
+  return decode(qstpath, outpath)

@@ -1,14 +1,10 @@
-from struct import *
-import sys
-import traceback
-import json
-import math
-from decode_wrapper import *
-from pretty_json import *
-import io
 import os
+import io
 import re
-import numpy as np
+import traceback
+from struct import *
+from decode_wrapper import py_decode
+from pretty_json import pretty_json_format
 
 # https://github.com/ArmageddonGames/ZeldaClassic/blob/30c9e17409304390527fcf84f75226826b46b819/src/zdefs.h#L155
 ID_HEADER = b'HDR '
@@ -270,8 +266,9 @@ def read_data(dest, section_version, descriptors):
 
 
 class ZeldaClassicReader:
-  def __init__(self, b):
+  def __init__(self, b, path):
     self.b = b
+    self.path = path
 
     self.errors = []
     self.combos = None
@@ -298,25 +295,13 @@ class ZeldaClassicReader:
     # ]
     # assert_equal(preamble, self.b.read(len(preamble)))
 
-    rest_of_data = self.b.f.read()
-    for method in reversed(range(5)):
-      err, decoded = py_decode(rest_of_data, len(rest_of_data), method)
-      if err == 0:
-        break
-      elif err == 5:
-        # decoding error, try with a different method.
-        print('decoding failed, trying different method')
-        continue
-      else:
-        raise Exception(f'error decoding: {err}.')
-
+    outpath = './output/decoded.data'
+    err = py_decode(self.path, outpath)
     if err != 0:
-      raise Exception('Could not decode file')
-    print('decoded file successfully')
+      raise Exception(f'error decoding: {err}.')
 
-    f = open('./output/decoded.data', 'wb')
-    f.write(decoded)
-    f.close()
+    with open(outpath, "rb") as f:
+      decoded = f.read()
 
     # remake the byte reader with the decoded data
     header_start = decoded.find(b'HDR')
@@ -465,22 +450,18 @@ class ZeldaClassicReader:
 
       pixels = section_bytes.read_array(1, self.tilesize(tile_format))
 
-      if tile_format == 0:
-        # ?
-        # pass
-        break
-      elif tile_format == 1:
-        # 1 byte per 2 pixels
-        pixels_expanded = []
-        for val in pixels:
-          pixels_expanded.append(val & 0xF)
-          pixels_expanded.append((val >> 4) & 0xF)
-        pixels = pixels_expanded
-      elif tile_format == 2:
-        # 1 byte per pixel
-        pass
-      else:
-        raise Exception(f'unexpected format {tile_format}')
+      match tile_format:
+        case 1:
+          # 1 byte per 2 pixels
+          pixels_expanded = []
+          for val in pixels:
+            pixels_expanded.append(val & 0xF)
+            pixels_expanded.append((val >> 4) & 0xF)
+          pixels = pixels_expanded
+        case 0 | 2 | 3:
+          pass
+        case _:
+          raise Exception(f'unexpected format {tile_format}')
       
       tiles.append(pixels)
 
