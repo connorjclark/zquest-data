@@ -2,17 +2,15 @@ from setuptools.command.install import install
 from distutils.core import setup
 from distutils.extension import Extension
 from Cython.Build import cythonize
+import os
+import subprocess
 
 class MyInstall(install):
   def run(self):
-    # with tempfile.TemporaryDirectory() as tmpdir:
-    #   print('created temporary directory', tmpdir)
-      # subprocess.run(['git', 'clone', '--branch', '4.4.3.1', 'https://github.com/liballeg/allegro5.git', tmpdir], cwd=tmpdir)
-      # subprocess.run(['cmake', '.'], cwd=tmpdir)
-      # subprocess.run(['make'], cwd=tmpdir)
-      # subprocess.run(['make', 'install'], cwd=tmpdir)
-      # subprocess.run(['ldconfig'], cwd=tmpdir)
-
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    allegro_dir = f'{script_dir}/third_party/allegro'
+    subprocess.run(['git', 'clone', '--depth', '1', '--branch', '4.4.3.1', 'https://github.com/liballeg/allegro5.git', allegro_dir])
+    subprocess.run(['cmake', '.'], cwd=allegro_dir)
     install.run(self)
 
 
