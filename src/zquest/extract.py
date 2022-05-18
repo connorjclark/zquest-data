@@ -5,176 +5,12 @@ from dataclasses import dataclass
 from zquest.bytes import Bytes
 from decode_wrapper import py_decode
 from zquest.pretty_json import pretty_json_format
-from zquest.sections import read_section
-
-# https://github.com/ArmageddonGames/ZeldaClassic/blob/30c9e17409304390527fcf84f75226826b46b819/src/zdefs.h#L155
-ID_HEADER = b'HDR '
-ID_RULES = b'RULE'
-ID_STRINGS = b'STR '
-ID_MISC = b'MISC'
-ID_TILES = b'TILE'
-ID_COMBOS = b'CMBO'
-ID_CSETS = b'CSET'
-ID_MAPS = b'MAP '
-ID_DMAPS = b'DMAP'
-ID_DOORS = b'DOOR'
-ID_ITEMS = b'ITEM'
-ID_WEAPONS = b'WPN '
-ID_COLORS = b'MCLR'
-ID_ICONS = b'ICON'
-ID_GRAPHICSPACK = b'GPAK'
-ID_INITDATA = b'INIT'
-ID_GUYS = b'GUY '
-ID_MIDIS = b'MIDI'
-ID_CHEATS = b'CHT '
-ID_SAVEGAME = b'SVGM'
-ID_COMBOALIASES = b'CMBA'
-ID_LINKSPRITES = b'LINK'
-ID_SUBSCREEN = b'SUBS'
-ID_ITEMDROPSETS = b'DROP'
-ID_FAVORITES = b'FAVS'
-ID_FFSCRIPT = b'FFSC'
-ID_SFX = b'SFX '
-
-SECTION_IDS = [
-  ID_HEADER,
-  ID_RULES,
-  ID_STRINGS,
-  ID_MISC,
-  ID_TILES,
-  ID_COMBOS,
-  ID_CSETS,
-  ID_MAPS,
-  ID_DMAPS,
-  ID_DOORS,
-  ID_ITEMS,
-  ID_WEAPONS,
-  ID_COLORS,
-  ID_ICONS,
-  ID_GRAPHICSPACK,
-  ID_INITDATA,
-  ID_GUYS,
-  ID_MIDIS,
-  ID_CHEATS,
-  ID_SAVEGAME,
-  ID_COMBOALIASES,
-  ID_LINKSPRITES,
-  ID_SUBSCREEN,
-  ID_ITEMDROPSETS,
-  ID_FAVORITES,
-  ID_FFSCRIPT,
-  ID_SFX,
-]
-
-# V_HEADER =  3
-# V_RULES = 15
-# V_STRINGS =  6
-# V_MISC = 11
-# V_TILES =  2
-# V_COMBOS = 12
-# V_CSETS =  4
-# V_MAPS = 22
-# V_DMAPS = 13
-# V_DOORS =  1
-# V_ITEMS = 45
-# V_WEAPONS =  7
-# V_COLORS =  3
-# V_ICONS = 10
-# V_GRAPHICSPACK =  1
-# V_INITDATA = 19
-# V_GUYS = 41
-# V_MIDIS =  4
-# V_CHEATS =  1
-# V_SAVEGAME = 12
-# V_COMBOALIASES =  3
-# V_LINKSPRITES =  5
-# V_SUBSCREEN =  6
-# V_ITEMDROPSETS =  2
-# V_FFSCRIPT = 13
-# V_SFX =  7
-# V_FAVORITES =  1
-
-# CV_HEADER = 3
-# CV_RULES = 1
-# CV_STRINGS = 2
-# CV_MISC = 7
-# CV_TILES = 1
-# CV_COMBOS = 1
-# CV_CSETS = 1
-# CV_MAPS = 9
-# CV_DMAPS = 1
-# CV_DOORS = 1
-# CV_ITEMS =15
-# CV_WEAPONS = 1
-# CV_COLORS = 1
-# CV_ICONS = 1
-# CV_GRAPHICSPACK = 1
-# CV_INITDATA =15
-# CV_GUYS = 4
-# CV_MIDIS = 3
-# CV_CHEATS = 1
-# CV_SAVEGAME = 5
-# CV_COMBOALIASES = 1
-# CV_LINKSPRITES = 1
-# CV_SUBSCREEN = 3
-# CV_ITEMDROPSETS = 1
-# CV_FFSCRIPT = 1
-# CV_SFX = 5
-# CV_FAVORITES = 1
+from zquest.sections import SECTION_IDS, read_section
+from zquest.version import Version
 
 def assert_equal(expected, actual):
   if expected != actual:
     raise Exception(f'expected {expected} but got {actual}')
-
-class Version:
-  def __init__(self, zelda_version=None, build=None):
-    self.zelda_version = zelda_version
-    self.build = build
-  
-  def __str__(self):
-    parts = []
-    if self.zelda_version != None:
-      parts.append(f'zelda_version = {hex(self.zelda_version)}')
-    if self.build != None:
-      parts.append(f'build = {self.build}')
-    return ', '.join(parts)
-  
-  def _cmp(self, other):
-    if self.zelda_version == None or other.zelda_version == None:
-      if self.zelda_version != None or other.zelda_version != None:
-        raise 'Invalid input'
-    
-    if self.zelda_version > other.zelda_version:
-      return 1
-    elif self.zelda_version < other.zelda_version:
-      return -1
-    
-    if self.build == None or other.build == None:
-      if self.build != None or other.build != None:
-        # TODO: eh, this is wrong and will break eventually.
-        raise 'Invalid input'
-    
-    if self.build > other.build:
-      return 1
-    elif self.build < other.build:
-      return -1
-    
-    return 0
-  
-  def __eq__(self, other):
-    return self._cmp(other) == 0
-
-  def __ge__(self, other):
-    return self._cmp(other) >= 0
-
-  def __gt__(self, other):
-    return self._cmp(other) > 0
-  
-  def __le__(self, other):
-    return self._cmp(other) <= 0
-
-  def __lt__(self, other):
-    return self._cmp(other) < 0
 
 
 def read_data(dest, section_version, descriptors):
@@ -248,7 +84,7 @@ class ZeldaClassicReader:
   # https://github.com/ArmageddonGames/ZeldaClassic/blob/30c9e17409304390527fcf84f75226826b46b819/src/zq_class.cpp#L5414
   def read_zgp(self):
     id, section_version, section_cversion = self.read_section_header()
-    assert_equal(ID_GRAPHICSPACK, id) 
+    assert_equal(SECTION_IDS.GRAPHICSPACK, id) 
 
     while self.b.has_bytes():
       self.read_section()
@@ -297,7 +133,7 @@ class ZeldaClassicReader:
     # Sometimes there is garbage data between sections.
     if not re.match("\w{3,4}", id.decode("ascii", errors="ignore")):
       print(f"garbage section id: {id}, skipping ahead some bytes...")
-      while id not in SECTION_IDS:
+      while id not in vars(SECTION_IDS).values():
         self.b.bytes_read -= 12
         self.b.bytes_read += 1
         id, section_version, section_cversion = self.read_section_header()
@@ -307,17 +143,17 @@ class ZeldaClassicReader:
       print(id, size)
 
     sections = {
-      ID_HEADER: self.read_header,
-      ID_TILES: self.read_tiles,
-      ID_COMBOS: self.read_combos,
-      ID_CSETS: self.read_csets,
-      ID_DMAPS: self.read_dmaps,
-      ID_MAPS: self.read_maps,
-      ID_GUYS: self.read_guys,
-      ID_WEAPONS: self.read_weapons,
-      ID_LINKSPRITES: self.read_link_sprites,
-      ID_ITEMS: self.read_items,
-      ID_MIDIS: self.read_midis,
+      SECTION_IDS.HEADER: self.read_header,
+      SECTION_IDS.TILES: self.read_tiles,
+      SECTION_IDS.COMBOS: self.read_combos,
+      SECTION_IDS.CSETS: self.read_csets,
+      SECTION_IDS.DMAPS: self.read_dmaps,
+      SECTION_IDS.MAPS: self.read_maps,
+      SECTION_IDS.GUYS: self.read_guys,
+      SECTION_IDS.WEAPONS: self.read_weapons,
+      SECTION_IDS.LINKSPRITES: self.read_link_sprites,
+      SECTION_IDS.ITEMS: self.read_items,
+      SECTION_IDS.MIDIS: self.read_midis,
     }
 
     if size > self.b.length - self.b.bytes_read:
@@ -402,7 +238,7 @@ class ZeldaClassicReader:
   
   # https://github.com/ArmageddonGames/ZeldaClassic/blob/30c9e17409304390527fcf84f75226826b46b819/src/qst.cpp#L13150
   def read_combos(self, section_bytes, section_version, section_cversion):
-    self.combos = read_section(section_bytes, ID_COMBOS, self.version.zelda_version, section_version)
+    self.combos = read_section(section_bytes, SECTION_IDS.COMBOS, self.version.zelda_version, section_version)
   
   # https://github.com/ArmageddonGames/ZeldaClassic/blob/bdac8e682ac1eda23d775dacc5e5e34b237b82c0/src/qst.cpp#L15411
   def read_csets(self, section_bytes, section_version, section_cversion):

@@ -4,7 +4,6 @@ import types
 from zquest.bytes import Bytes
 
 # https://github.com/ArmageddonGames/ZeldaClassic/blob/30c9e17409304390527fcf84f75226826b46b819/src/zdefs.h#L155
-
 SECTION_IDS = types.SimpleNamespace()
 SECTION_IDS.HEADER = b'HDR '
 SECTION_IDS.RULES = b'RULE'
@@ -33,8 +32,6 @@ SECTION_IDS.ITEMDROPSETS = b'DROP'
 SECTION_IDS.FAVORITES = b'FAVS'
 SECTION_IDS.FFSCRIPT = b'FFSC'
 SECTION_IDS.SFX = b'SFX '
-
-# print (b'SFX ' in vars(SECTION_IDS).values())
 
 @dataclass
 class F:
