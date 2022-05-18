@@ -18,7 +18,7 @@ decode_extension = Extension(
   name='decode_wrapper',
   python_requires='>3.10.0',
   sources=[
-    'src/decode_wrapper.pyx',
+    'src/zquest/decode_wrapper.pyx',
     'lib/decode.c',
     'lib/allegro_shims.c',
     'third_party/allegro/src/unicode.c',
@@ -29,8 +29,9 @@ decode_extension = Extension(
   include_dirs=['lib', 'third_party/allegro/include'],
 )
 setup(
-  name='decode_wrapper',
+  name='zquest',
   version='0.1.0',
+  url='https://github.com/connorjclark/zquest-data',
   install_requires=['numpy', 'Pillow'],
   ext_modules=cythonize([decode_extension], language_level = '3'),
   cmdclass={'install': MyInstall},

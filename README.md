@@ -24,6 +24,7 @@ TODO: publish to package manager
 ```sh
 python3 -m pip install Cython Pillow numpy
 python3 setup.py install
+python3 -m unittest
 ```
 
 ## Usage

@@ -2,10 +2,10 @@ import io
 import re
 import traceback
 from dataclasses import dataclass
-from bytes import Bytes
+from zquest.bytes import Bytes
 from decode_wrapper import py_decode
-from pretty_json import pretty_json_format
-from sections import F, combo_fields, read_section
+from zquest.pretty_json import pretty_json_format
+from zquest.sections import read_section
 
 # https://github.com/ArmageddonGames/ZeldaClassic/blob/30c9e17409304390527fcf84f75226826b46b819/src/zdefs.h#L155
 ID_HEADER = b'HDR '

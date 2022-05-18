@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Any, List, Optional
 import types
-from bytes import Bytes
+from zquest.bytes import Bytes
 
 # https://github.com/ArmageddonGames/ZeldaClassic/blob/30c9e17409304390527fcf84f75226826b46b819/src/zdefs.h#L155
 
@@ -34,6 +34,8 @@ SECTION_IDS.FAVORITES = b'FAVS'
 SECTION_IDS.FFSCRIPT = b'FFSC'
 SECTION_IDS.SFX = b'SFX '
 
+# print (b'SFX ' in vars(SECTION_IDS).values())
+
 @dataclass
 class F:
   name: str
@@ -47,7 +49,8 @@ def read_field_value(bytes: Bytes, field: F):
   if field.type == 'object':
     result = {}
     for f in field.fields:
-      result[f.name] = read_field(bytes, f)
+      if f:
+        result[f.name] = read_field(bytes, f)
     return result
   
   match field.type:
@@ -81,7 +84,6 @@ def if_(bool: bool, first: Any, second: Any):
 
 def read_section(bytes, id, zelda_version, sversion):
   fields = get_fields(bytes, id, zelda_version, sversion)
-  # print(fields)
   return read_field(bytes, fields)
 
 
@@ -101,7 +103,7 @@ def combo_fields(bytes, zelda_version, sversion):
   else:
     num_combos = bytes.read_int()
 
-  fields = [
+  return F(name='', type='object', arr_len=num_combos, fields=[
     F(name='tile', type=if_(sversion >= 11, 'I', 'H')),
     F(name='flip', type='B' ),
     F(name='walk', type='B' ),
@@ -120,18 +122,13 @@ def combo_fields(bytes, zelda_version, sversion):
     F(name='animflags', type='B') if sversion >= 6 else None,
     F(name='attributes', arr_len= 4, type='I') if sversion >= 8 else None,
     F(name='usrflags', type='I') if sversion >= 8 else None,
-
     F(name='triggerFlags', arr_len= 2, type='I') if sversion == 9 else None,
     F(name='triggerLevel', type='I') if sversion == 9 else None,
     F(name='triggerFlags', arr_len= 3, type='I') if sversion >= 10 else None,
     F(name='triggerLevel', type='I') if sversion >= 10 else None,
-
     F(name='label', arr_len= 11, type='B') if sversion >= 12 else None,
     F(name='_padding', type='11s') if zelda_version < 0x193 else None,
-    F(name='attribytes', arr_len= 4, type='B') if sversion >= 13 else None,
+    F(name='attributes', arr_len= 4, type='B') if sversion >= 13 else None,
     F(name='script', type='H') if sversion >= 14 else None,
     F(name='initd', arr_len= 2, type='I') if sversion >= 14 else None,
-  ]
-  fields = [f for f in fields if f]
-
-  return F(name='', type='object', arr_len=num_combos, fields=fields)
+  ])
