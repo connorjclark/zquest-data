@@ -34,10 +34,9 @@ def read_data(dest, section_version, descriptors):
 
 
 class ZeldaClassicReader:
-  def __init__(self, b, path):
-    self.b = b
+  def __init__(self, path):
+    self.b = Bytes(open(path))
     self.path = path
-
     self.errors = []
     self.combos = None
     self.tiles = None

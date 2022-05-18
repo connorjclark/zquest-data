@@ -5,9 +5,7 @@ from zquest.extract import ZeldaClassicReader
 
 dir = os.path.dirname(__file__)
 qst = os.path.join(dir, '../test_data/1st.qst')
-with open(qst) as f:
-  reader = ZeldaClassicReader(f, 'test_data/1st.qst')
-
+reader = ZeldaClassicReader('test_data/1st.qst')
 reader.read_qst()
 
 for i, combo in enumerate(reader.combos):

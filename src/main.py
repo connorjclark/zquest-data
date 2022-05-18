@@ -2,7 +2,6 @@ import argparse
 import re
 import struct
 from PIL import Image
-from zquest.bytes import Bytes
 from zquest.extract import ZeldaClassicReader
 
 parser = argparse.ArgumentParser()
@@ -11,10 +10,6 @@ parser.add_argument('--save-midis', action='store_true')
 parser.add_argument('--save-tiles', action='store_true')
 parser.add_argument('--save-csets', action='store_true')
 options = parser.parse_args()
-
-def slugify(value):
-  value = str(value).strip().replace(' ', '_')
-  return re.sub(r'(?u)[^-\w.]', '', value)
 
 def save_midi_file(zc_midi, tracks, path):
   tracks_with_data = []
@@ -46,13 +41,11 @@ def save_midi_file(zc_midi, tracks, path):
 
 if __name__ == "__main__":
   path = options.input
-  with open(path, "rb") as f:
-    b = Bytes(f)
-    reader = ZeldaClassicReader(b, path)
-    if path.endswith('.qst'):
-      reader.read_qst()
-    else:
-      reader.read_zgp()
+  reader = ZeldaClassicReader(path)
+  if path.endswith('.qst'):
+    reader.read_qst()
+  else:
+    reader.read_zgp()
 
     print('num tiles', len(reader.tiles))
     print('num combos', len(reader.combos))
