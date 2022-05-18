@@ -11,7 +11,10 @@ class Bytes:
     f.seek(0, os.SEEK_END)
     self.length = f.tell()
     f.seek(0)
-  
+
+  def rewind(self):
+    self.f.seek(0)
+
   def has_bytes(self) -> bool:
     more_bytes = self.f.read(1) != b''
     if more_bytes:

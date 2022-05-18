@@ -1,9 +1,9 @@
 import io
 import re
+import tempfile
 import traceback
-from dataclasses import dataclass
 from zquest.bytes import Bytes
-from decode_wrapper import py_decode
+from decode_wrapper import py_decode, py_encode
 from zquest.pretty_json import pretty_json_format
 from zquest.sections import SECTION_IDS, read_section
 from zquest.version import Version
@@ -65,7 +65,7 @@ class ZeldaClassicReader:
     outpath = './output/decoded.data'
     err = py_decode(self.path, outpath)
     if err != 0:
-      raise Exception(f'error decoding: {err}.')
+      raise Exception(f'error decoding: {err}')
 
     with open(outpath, "rb") as f:
       decoded = f.read()
@@ -899,6 +899,14 @@ class ZeldaClassicReader:
 
     self.midis = midis
     self.midi_tracks = midi_tracks
+
+  def save_qst(self, qst_path):
+    self.b.rewind()
+    with tempfile.NamedTemporaryFile() as tmp:
+      tmp.write(self.b.read(self.b.length))
+      err = py_encode(tmp.name, qst_path)
+      if err != 0:
+        raise Exception(f'error encoding: {err}')
 
   def to_json(self):
     data = {

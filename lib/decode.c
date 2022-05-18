@@ -159,8 +159,70 @@ int try_decode(const char *qst_file, const char *destfname, int32_t method)
   return 0;
 }
 
+int32_t encode_file_007(const char *srcfile, const char *destfile, int32_t key2, const char *header, int32_t method) {
+  FILE *src, *dest;
+  int32_t tog = 0, c, r = 0;
+  int16_t c1 = 0, c2 = 0;
+
+  seed = key2;
+  src = fopen(srcfile, "rb");
+
+  if (!src)
+    return 1;
+
+  dest = fopen(destfile, "wb");
+
+  if (!dest) {
+    fclose(src);
+    return 2;
+  }
+
+  // write the header
+  if (header) {
+    for (c = 0; header[c]; c++)
+      fputc(header[c], dest);
+  }
+
+  // write the key, XORed with MASK
+  key2 ^= enc_mask[method];
+  fputc(key2 >> 24, dest);
+  fputc((key2 >> 16) & 255, dest);
+  fputc((key2 >> 8) & 255, dest);
+  fputc(key2 & 255, dest);
+
+  // encode the data
+  while ((c = fgetc(src)) != EOF) {
+    c1 += c;
+    c2 = (c2 << 4) + (c2 >> 12) + c;
+
+    if (tog)
+      c += r;
+    else {
+      r = rand_007(method);
+      c ^= r;
+    }
+
+    tog ^= 1;
+
+    fputc(c, dest);
+  }
+
+  // write the checksums
+  r = rand_007(method);
+  c1 ^= r;
+  c2 += r;
+  fputc(c1 >> 8, dest);
+  fputc(c1 & 255, dest);
+  fputc(c2 >> 8, dest);
+  fputc(c2 & 255, dest);
+
+  fclose(src);
+  fclose(dest);
+  return 0;
+}
+
 int decode(const char* qstpath, const char* outpath) {
-  for (int32_t method = 4; method >= 0; method--) {
+  for (int32_t method = ENC_METHOD_MAX - 1; method >= 0; method--) {
     int result = try_decode(qstpath, outpath, method);
     if (result == 0) {
       // All good!
@@ -177,4 +239,18 @@ int decode(const char* qstpath, const char* outpath) {
   }
 
   return -1;
+}
+
+int encode(const char* inputpath, const char* outpath) {
+  PACKFILE *pf = pack_fopen_password("/tmp/qst.compressed", F_WRITE_PACKED, datapwd);
+
+  FILE *f = fopen(inputpath, "rb");
+  int c;
+  while ((c = getc(f)) != EOF) {
+    pack_putc(c, pf);
+  }
+  fclose(f);
+  pack_fclose(pf);
+
+  return encode_file_007("/tmp/qst.compressed", outpath, 0, "Zelda Classic Quest File", ENC_METHOD_MAX - 1);
 }
