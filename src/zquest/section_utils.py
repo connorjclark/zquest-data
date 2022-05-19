@@ -2,9 +2,12 @@ from __future__ import annotations
 import io
 from typing import TYPE_CHECKING, Any, Tuple
 import types
+
 from zquest.bytes import Bytes
 from zquest.field import F
 from zquest.sections.cmbo import get_cmbo_field
+from zquest.sections.map import get_map_field
+from zquest.version import Version
 
 if TYPE_CHECKING:
   from zquest.extract import ZeldaClassicReader
@@ -47,6 +50,12 @@ def read_field_value(bytes: Bytes, field: F):
       for f in field.fields:
         if f:
           result[f.name] = read_field(bytes, f)
+
+      # hack to avoid lack of a good object structure in the field structure...
+      # TODO: make this better
+      if len(field.fields) == 1 and field.fields[0].name == '':
+        return result['']
+
       return result
     case 'I':
       return bytes.read_long()
@@ -65,8 +74,15 @@ def read_field_value(bytes: Bytes, field: F):
 def read_field(bytes: Bytes, field: F):
   if field.arr_len != None:
     result = []
-    for _ in range(field.arr_len):
-      result.append(read_field_value(bytes, field))
+
+    if field.arr_bitmask:
+      # TODO: do not hardcode type
+      mask = bytes.read_long()
+      for i in range(field.arr_len):
+        result.append(read_field_value(bytes, field) if (mask >> i) & 1 else None)
+    else:
+      for _ in range(field.arr_len):
+        result.append(read_field_value(bytes, field))
     return result
   else:
     return read_field_value(bytes, field)
@@ -76,12 +92,16 @@ def serialize(reader: ZeldaClassicReader) -> bytearray:
   reader.b.rewind()
   raw_byte_array = bytearray(reader.b.read(reader.b.length))
 
-  # Currently only supports combo section for now.
-  id = SECTION_IDS.COMBOS
-  combos_raw_bytes = serialize_section(reader, id)
-  combos_start = reader.section_offsets[id]
-  combos_end = combos_start + reader.section_lengths[id] + 12
-  raw_byte_array[combos_start:combos_end] = combos_raw_bytes
+  # TODO: Currently doesn't support every section.
+  ids = [
+    SECTION_IDS.COMBOS,
+    # SECTION_IDS.MAPS,
+  ]
+  for id in ids:
+    combos_raw_bytes = serialize_section(reader, id)
+    combos_start = reader.section_offsets[id]
+    combos_end = combos_start + reader.section_lengths[id] + 12
+    raw_byte_array[combos_start:combos_end] = combos_raw_bytes
 
   return raw_byte_array
 
@@ -96,7 +116,13 @@ def serialize_section(reader: ZeldaClassicReader, id: bytes) -> bytes:
   bytes.write_long(0)
   assert len(bytes.f.getvalue()) == 12
 
-  write_field(bytes, reader.combos, reader.section_fields[id])
+  match id:
+    case SECTION_IDS.COMBOS:
+      write_field(bytes, reader.combos, reader.section_fields[id])
+    case SECTION_IDS.MAPS:
+      write_field(bytes, reader.maps, reader.section_fields[id])
+    case _:
+      raise Exception(f'unexpected id {id}')
 
   bytes.f.seek(8)
   bytes.write_long(len(bytes.f.getvalue()) - 12)
@@ -134,14 +160,17 @@ def write_field_value(bytes: Bytes, data: Any, field: F):
       raise Exception(f'unexpected type {field.type}')
 
 
-def read_section(bytes, id, zelda_version, sversion) -> Tuple[Any, F]:
-  field = get_section_field(bytes, id, zelda_version, sversion)
+def read_section(bytes: Bytes, id: bytes, version: Version, sversion: int) -> Tuple[Any, F]:
+  field = get_section_field(bytes, id, version, sversion)
   return read_field(bytes, field), field
 
 
-def get_section_field(bytes, id, zelda_version, sversion) -> F:
+# TODO: move all section reading to this new function
+def get_section_field(bytes: Bytes, id: bytes, version: Version, sversion: int) -> F:
   match id:
     case SECTION_IDS.COMBOS:
-      return get_cmbo_field(bytes, zelda_version, sversion)
+      return get_cmbo_field(bytes, version, sversion)
+    case SECTION_IDS.MAPS:
+      return get_map_field(bytes, version, sversion)
     case _:
       raise Exception(f'unexpected id {id}')

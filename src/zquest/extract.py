@@ -12,7 +12,7 @@ def assert_equal(expected, actual):
   if expected != actual:
     raise Exception(f'expected {expected} but got {actual}')
 
-
+# TODO: deprecated, remove.
 def read_data(dest, section_version, descriptors):
   for key, read in descriptors.items():
     if key in dest:
@@ -147,9 +147,6 @@ class ZeldaClassicReader:
         id, section_version, section_cversion = self.read_section_header()
         size = self.b.read_long()
 
-    if size > 0:
-      print(id, size)
-
     sections = {
       SECTION_IDS.HEADER: self.read_header,
       SECTION_IDS.TILES: self.read_tiles,
@@ -171,7 +168,7 @@ class ZeldaClassicReader:
     self.section_lengths[id] = size
     section_bytes = Bytes(io.BytesIO(self.b.read(size)))
     if id in sections:
-      print('read_section', id, size, section_version, section_cversion)
+      print(f'{id} {section_version}\t{section_cversion}\t{size}')
 
       try:
         sections[id](section_bytes, section_version, section_cversion)
@@ -247,7 +244,7 @@ class ZeldaClassicReader:
   
   # https://github.com/ArmageddonGames/ZeldaClassic/blob/30c9e17409304390527fcf84f75226826b46b819/src/qst.cpp#L13150
   def read_combos(self, section_bytes, section_version, section_cversion):
-    data, fields = read_section(section_bytes, SECTION_IDS.COMBOS, self.version.zelda_version, section_version)
+    data, fields = read_section(section_bytes, SECTION_IDS.COMBOS, self.version, section_version)
     self.combos = data
     self.section_fields[SECTION_IDS.COMBOS] = fields
   
@@ -379,260 +376,9 @@ class ZeldaClassicReader:
       })
   
   def read_maps(self, section_bytes, section_version, section_cversion):
-    def read_screen():
-      screen = {}
-      screen['valid'] = section_bytes.read_byte()
-      screen['guy'] = section_bytes.read_byte()
-      screen['str'] = section_bytes.read_int()
-      screen['room'] = section_bytes.read_byte()
-      screen['item'] = section_bytes.read_byte()
-      screen['hasitem'] = section_bytes.read_byte()
-
-      screen['tilewarptype'] = [section_bytes.read_byte()]
-      if self.version > Version(zelda_version=0x211, build=7):
-        screen['tilewarptype'].extend(section_bytes.read_array(1, 3))
-      
-      if self.version > Version(zelda_version=0x192, build=153):
-        screen['door_combo_set'] = section_bytes.read_int()
-
-      screen['warpreturnx'] = [section_bytes.read_byte()]
-      if self.version > Version(zelda_version=0x211, build=7):
-        screen['warpreturnx'].extend(section_bytes.read_array(1, 3))
-
-      screen['warpreturny'] = [section_bytes.read_byte()]
-      if self.version > Version(zelda_version=0x211, build=7):
-        screen['warpreturny'].extend(section_bytes.read_array(1, 3))
-        if section_version >= 18:
-          screen['warpreturnc'] = section_bytes.read_int()
-        else:
-          screen['warpreturnc'] = section_bytes.read_byte()
-      
-      screen['stairx'] = section_bytes.read_byte()
-      screen['stairy'] = section_bytes.read_byte()
-      screen['itemx'] = section_bytes.read_byte()
-      screen['itemy'] = section_bytes.read_byte()
-
-      if section_version > 15:
-        screen['color'] = section_bytes.read_int()
-      else:
-        screen['color'] = section_bytes.read_byte()
-      
-      screen['enemyflags'] = section_bytes.read_byte()
-      screen['doors'] = section_bytes.read_array(1, 4)
-
-      if section_version <= 11:
-        raise 'TODO'
-      else:
-        screen['tilewarpdmap'] = section_bytes.read_array(2, 4)
-      
-      screen['tilewarpscr'] = [section_bytes.read_byte()]
-      if self.version > Version(zelda_version=0x211, build=7):
-        screen['tilewarpscr'].extend(section_bytes.read_array(1, 3))
-      
-      if section_version >= 15:
-        screen['tilewarpoverlayflags'] = section_bytes.read_byte()
-      
-      screen['exitdir'] = section_bytes.read_byte()
-
-      screen['enemies'] = []
-      for k in range(10):
-        if self.version < Version(zelda_version=0x192, build=10):
-          screen['enemies'].append(section_bytes.read_byte())
-        else:
-          screen['enemies'].append(section_bytes.read_int())
-        
-        if section_version < 9:
-          raise 'TODO'
-
-      screen['pattern'] = section_bytes.read_byte()
-      
-      screen['sidewarptype'] = [section_bytes.read_byte()]
-      if self.version > Version(zelda_version=0x211, build=7):
-        screen['sidewarptype'].extend(section_bytes.read_array(1, 3))
-      
-      if section_version >= 15:
-        screen['sidewarpoverlayflags'] = section_bytes.read_byte()
-      
-      screen['warparrivalx'] = section_bytes.read_byte()
-      screen['warparrivaly'] = section_bytes.read_byte()
-      screen['path'] = section_bytes.read_array(1, 4)
-      
-      screen['sidewarpscr'] = [section_bytes.read_byte()]
-      if self.version > Version(zelda_version=0x211, build=7):
-        screen['sidewarpscr'].extend(section_bytes.read_array(1, 3))
-      
-      if section_version <= 11:
-        raise 'TODO'
-      else:
-        screen['sidewarpdmap'] = section_bytes.read_array(2, 4)
-      
-      if self.version > Version(zelda_version=0x211, build=7):
-        screen['sidewarpindex'] = section_bytes.read_byte()
-      
-      screen['undercombo'] = section_bytes.read_int()
-      screen['undercset'] = section_bytes.read_byte()
-      screen['catchall'] = section_bytes.read_int()
-      screen['flags'] = section_bytes.read_byte()
-      screen['flags2'] = section_bytes.read_byte()
-      screen['flags3'] = section_bytes.read_byte()
-
-      if self.version > Version(zelda_version=0x211, build=1):
-        screen['flags4'] = section_bytes.read_byte()
-      
-      if self.version > Version(zelda_version=0x211, build=7):
-        screen['flags5'] = section_bytes.read_byte()
-        screen['noreset'] = section_bytes.read_int()
-        screen['nocarry'] = section_bytes.read_int()
-      
-      if self.version > Version(zelda_version=0x211, build=9):
-        screen['flags6'] = section_bytes.read_byte()
-      
-      if section_version > 5:
-        screen['flags7'] = section_bytes.read_byte()
-        screen['flags8'] = section_bytes.read_byte()
-        screen['flags9'] = section_bytes.read_byte()
-        screen['flags10'] = section_bytes.read_byte()
-        screen['csensitive'] = section_bytes.read_byte()
-      
-      if section_version < 14:
-        raise 'TODO'
-      else:
-        screen['oceansfx'] = section_bytes.read_byte()
-        screen['bosssfx'] = section_bytes.read_byte()
-        screen['secretsfx'] = section_bytes.read_byte()
-      
-      if section_version < 15:
-        raise 'TODO'
-      else:
-        screen['holdupsfx'] = section_bytes.read_byte()
-      
-      if self.version > Version(zelda_version=0x192, build=97):
-        screen['layermap'] = section_bytes.read_array(1, 6)
-        screen['layerscreen'] = section_bytes.read_array(1, 6)
-      else:
-        raise 'TODO'
-      
-      # if self.version > Version(zelda_version=0x192, build=149):
-      #   screen['layermap'] = section_bytes.read_array(1, 6)
-
-      if self.version > Version(zelda_version=0x192, build=149):
-        screen['layeropacity'] = section_bytes.read_array(1, 6)
-      
-      if self.version > Version(zelda_version=0x192, build=153):
-        if self.version == Version(zelda_version=0x192, build=153):
-          screen['padding'] = section_bytes.read_byte()
-        screen['timedwarptics'] = section_bytes.read_int()
-      
-      # extras = 0
-      # screen['extras'] = section_bytes.read_array(1, extras)
-
-      if self.version > Version(zelda_version=0x211, build=2):
-        screen['nextmap'] = section_bytes.read_byte()
-        screen['nextscr'] = section_bytes.read_byte()
-      
-      # if self.version > Version(zelda_version=0x192, build=2):
-
-      if self.version < Version(zelda_version=0x192, build=137):
-        num_secretcombos = 20
-      elif self.version < Version(zelda_version=0x192, build=154):
-        num_secretcombos = 256
-      else:
-        num_secretcombos = 128
-      if self.version < Version(zelda_version=0x192, build=154):
-        screen['secretcombo'] = section_bytes.read_array(1, num_secretcombos)
-      else:
-        screen['secretcombo'] = section_bytes.read_array(2, 128)
-
-      if self.version > Version(zelda_version=0x192, build=153):
-        screen['secretcset'] = section_bytes.read_array(1, 128)
-        screen['secretflag'] = section_bytes.read_array(1, 128)
-      
-      map_size = 16 * 11
-      screen['data'] = section_bytes.read_array(2, map_size)
-
-      if self.version > Version(zelda_version=0x192, build=20):
-        screen['sflag'] = section_bytes.read_array(1, map_size)
-      
-      if self.version > Version(zelda_version=0x192, build=97):
-        screen['cset'] = section_bytes.read_array(1, map_size)
-      
-      if section_version > 4:
-        screen['screen_midi'] = section_bytes.read_int()
-      
-      if section_version >= 17:
-        screen['lens_layer'] = section_bytes.read_byte()
-      
-      if section_version > 6:
-        screen['numff'] = section_bytes.read_long()
-        screen['ff'] = []
-        MAXFFCS = 32
-        for m in range(MAXFFCS):
-          ff = {}
-          if (screen['numff'] >> m) & 1:
-            ff['data'] = section_bytes.read_int()
-            ff['cset'] = section_bytes.read_byte()
-            ff['delay'] = section_bytes.read_int()
-
-            if section_version < 9:
-              raise 'TODO'
-            else:
-              ff['x'] = section_bytes.read_long()
-              ff['y'] = section_bytes.read_long()
-              ff['xdelta'] = section_bytes.read_long()
-              ff['ydelta'] = section_bytes.read_long()
-              ff['xdelta2'] = section_bytes.read_long()
-              ff['ydelta2'] = section_bytes.read_long()
-            
-            ff['link'] = section_bytes.read_byte()
-            
-            if section_version > 7:
-              ff['width'] = section_bytes.read_byte()
-              ff['height'] = section_bytes.read_byte()
-              ff['flags'] = section_bytes.read_long()
-            
-            if section_version > 9:
-              ff['script'] = section_bytes.read_int()
-            
-            if section_version > 10:
-              ff['initd'] = section_bytes.read_array(4, 8)
-              ff['inita'] = [section_bytes.read_byte() * 10000, section_bytes.read_byte() * 10000]
-
-          screen['ff'].append(ff)
-      
-      if section_version < 13:
-        raise 'TODO'
-      
-      if section_version >= 19 and self.version.zelda_version > 0x253:
-        screen['npcstrings'] = section_bytes.read_array(4, 10)
-        screen['new_items'] = section_bytes.read_array(2, 10)
-        screen['new_item_x'] = section_bytes.read_array(2, 10)
-        screen['new_item_y'] = section_bytes.read_array(2, 10)
-      
-      if section_version < 19 and self.version.zelda_version > 0x253:
-        raise 'TODO'
-      
-      if section_version >= 20 and self.version.zelda_version > 0x253:
-        screen['script'] = section_bytes.read_int()
-        screen['screeninitd'] = section_bytes.read_array(4, 8)
-      
-      if section_version >= 21 and self.version.zelda_version > 0x253:
-        screen['preloadscript'] = section_bytes.read_byte()
-
-      if section_version >= 22 and self.version.zelda_version > 0x253:
-        screen['hidelayers'] = section_bytes.read_byte()
-        screen['hidescriptlayers'] = section_bytes.read_byte()
-
-      return screen
-
-    map_count = section_bytes.read_int()
-    maps = []
-
-    for _ in range(map_count):
-      map_ = {}
-      map_['screens'] = [read_screen() for i in range(136)]
-      maps.append(map_)
-
-    self.maps = maps
+    data, fields = read_section(section_bytes, SECTION_IDS.MAPS, self.version, section_version)
+    self.maps = data
+    self.section_fields[SECTION_IDS.MAPS] = fields
 
   def read_guys(self, section_bytes, section_version, section_cversion):
     if section_version <= 3:

@@ -13,4 +13,5 @@ class F:
   fields: Optional[List[Any]] = None # List[F]
   arr_len: Optional[int] = None
   encode_arr_len: Optional[str] = None
+  arr_bitmask: Optional[bool] = None
   str_len: Optional[int] = None
