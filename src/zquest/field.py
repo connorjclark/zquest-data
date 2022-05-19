@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, List, Optional
+from typing import Any, Dict, Optional
 
 
 def if_(bool: bool, first: Any, second: Any):
@@ -8,9 +8,9 @@ def if_(bool: bool, first: Any, second: Any):
 
 @dataclass
 class F:
-  name: str
   type: str
-  fields: Optional[List[Any]] = None # List[F]
+  field: Optional['F'] = None # only used for array type
+  fields: Optional[Dict[str, 'F']] = None # only used for object type
   arr_len: Optional[int] = None
   encode_arr_len: Optional[str] = None
   arr_bitmask: Optional[bool] = None

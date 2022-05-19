@@ -42,20 +42,40 @@ SECTION_IDS.FAVORITES = b'FAVS'
 SECTION_IDS.FFSCRIPT = b'FFSC'
 SECTION_IDS.SFX = b'SFX '
 
+def expand_field_shorthand(field: F) -> F:
+  """
+  Allows for shorthand fields.
 
-def read_field_value(bytes: Bytes, field: F):
+  Expands:
+    F(arr_len=3, type='I')
+  To:
+    F(type='array', arr_len=3, field=F(type='I'))
+  """
+  if field.arr_len != None and field.type != 'array':
+    return F(type='array', arr_len=field.arr_len, field=F(type=field.type))
+  else:
+    return field
+
+
+def read_field(bytes: Bytes, field: F):
+  field = expand_field_shorthand(field)
   match field.type:
+    case 'array':
+      result = []
+      if field.arr_bitmask:
+        # TODO: do not hardcode type
+        mask = bytes.read_long()
+        for i in range(field.arr_len):
+          result.append(read_field(bytes, field.field) if (mask >> i) & 1 else None)
+      else:
+        for _ in range(field.arr_len):
+          result.append(read_field(bytes, field.field))
+      return result
     case 'object':
       result = {}
-      for f in field.fields:
+      for key, f in field.fields.items():
         if f:
-          result[f.name] = read_field(bytes, f)
-
-      # hack to avoid lack of a good object structure in the field structure...
-      # TODO: make this better
-      if len(field.fields) == 1 and field.fields[0].name == '':
-        return result['']
-
+          result[key] = read_field(bytes, f)
       return result
     case 'I':
       return bytes.read_long()
@@ -69,23 +89,6 @@ def read_field_value(bytes: Bytes, field: F):
       return bytes.read_str(field.str_len)
     case _:
       raise Exception(f'unexpected type {field.type}')
-
-
-def read_field(bytes: Bytes, field: F):
-  if field.arr_len != None:
-    result = []
-
-    if field.arr_bitmask:
-      # TODO: do not hardcode type
-      mask = bytes.read_long()
-      for i in range(field.arr_len):
-        result.append(read_field_value(bytes, field) if (mask >> i) & 1 else None)
-    else:
-      for _ in range(field.arr_len):
-        result.append(read_field_value(bytes, field))
-    return result
-  else:
-    return read_field_value(bytes, field)
 
 
 def serialize(reader: ZeldaClassicReader) -> bytearray:
@@ -131,22 +134,29 @@ def serialize_section(reader: ZeldaClassicReader, id: bytes) -> bytes:
 
 
 def write_field(bytes: Bytes, data: Any, field: F):
-  if field.arr_len != None:
-    data_array = data[field.name] if field.name else data
-    if field.encode_arr_len != None:
-      bytes.write_int(len(data_array))
-    for i in range(len(data_array)):
-      write_field_value(bytes, data_array[i], field)
-  else:
-    write_field_value(bytes, data, field)
-
-
-def write_field_value(bytes: Bytes, data: Any, field: F):
+  field = expand_field_shorthand(field)
   match field.type:
+    case 'array':
+      assert type(data) == type([])
+      if field.encode_arr_len != None:
+        bytes.write_int(len(data))
+
+      if field.arr_bitmask:
+        mask = 0
+        for i in range(len(data)):
+          if data[i]:
+            mask |= 1 << i
+        bytes.write_long(mask)
+        for i in range(len(data)):
+          if data[i] != None:
+            write_field(bytes, data[i], field.field)
+      else:
+        for i in range(len(data)):
+          write_field(bytes, data[i], field.field)
     case 'object':
-      for f in field.fields:
+      for key, f in field.fields.items():
         if f:
-          write_field(bytes, data[f.name], f)
+          write_field(bytes, data[key], f)
     case 'I':
       bytes.write_long(data)
     case 'H':

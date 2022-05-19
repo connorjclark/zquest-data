@@ -173,8 +173,9 @@ class ZeldaClassicReader:
       try:
         sections[id](section_bytes, section_version, section_cversion)
       except Exception as e:
-        print(e)
-        self.errors.append("".join(traceback.TracebackException.from_exception(e).format()))
+        error = "".join(traceback.TracebackException.from_exception(e).format())
+        print(error)
+        self.errors.append(error)
 
       remaining = size - section_bytes.bytes_read()
       if remaining != 0:
