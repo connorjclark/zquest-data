@@ -6,11 +6,16 @@ from typing import List
 class Bytes:
   def __init__(self, f: IOBase):
     self.f = f
-    self.bytes_read = 0
 
     f.seek(0, os.SEEK_END)
     self.length = f.tell()
     f.seek(0)
+
+  def bytes_read(self):
+    return self.f.tell()
+
+  def advance(self, n: int):
+    self.f.seek(n, 1)
 
   def rewind(self):
     self.f.seek(0)
@@ -32,20 +37,31 @@ class Bytes:
       return b''
 
     data = self.f.read(n)
-    self.bytes_read += n
     return data
   
+  def write(self, n: int):
+    self.f.write(n)
+
   def read_byte(self) -> int:
     return unpack('B', self.read(1))[0]
 
+  def write_byte(self, val):
+    self.f.write(pack('B', val))
+
   def read_int(self) -> int:
     return unpack('<H', self.read(2))[0]
+
+  def write_int(self, val):
+    self.f.write(pack('<H', val))
   
   def read_signed_int_big_endian(self) -> int:
     return unpack('>h', self.read(2))[0]
 
   def read_long(self) -> int:
     return unpack('<I', self.read(4))[0]
+
+  def write_long(self, val):
+    self.f.write(pack('<I', val))
   
   def read_long_big_endian(self) -> int:
     return unpack('>I', self.read(4))[0]

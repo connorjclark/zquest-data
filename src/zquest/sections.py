@@ -1,7 +1,12 @@
+from __future__ import annotations
 from dataclasses import dataclass
-from typing import Any, List, Optional
+import io
+from typing import TYPE_CHECKING, Any, List, Optional, Tuple
 import types
 from zquest.bytes import Bytes
+
+if TYPE_CHECKING:
+  from zquest.extract import ZeldaClassicReader
 
 # https://github.com/ArmageddonGames/ZeldaClassic/blob/30c9e17409304390527fcf84f75226826b46b819/src/zdefs.h#L155
 SECTION_IDS = types.SimpleNamespace()
@@ -39,18 +44,18 @@ class F:
   type: str
   fields: Optional[List[Any]] = None # List[F]
   arr_len: Optional[int] = None
+  encode_arr_len: Optional[str] = None
   str_len: Optional[int] = None
 
 
 def read_field_value(bytes: Bytes, field: F):
-  if field.type == 'object':
-    result = {}
-    for f in field.fields:
-      if f:
-        result[f.name] = read_field(bytes, f)
-    return result
-  
   match field.type:
+    case 'object':
+      result = {}
+      for f in field.fields:
+        if f:
+          result[f.name] = read_field(bytes, f)
+      return result
     case 'I':
       return bytes.read_long()
     case 'H':
@@ -71,36 +76,100 @@ def read_field(bytes: Bytes, field: F):
     for _ in range(field.arr_len):
       result.append(read_field_value(bytes, field))
     return result
-  
-  return read_field_value(bytes, field)
+  else:
+    return read_field_value(bytes, field)
+
+
+def serialize(reader: ZeldaClassicReader) -> bytearray:
+  reader.b.rewind()
+  raw_byte_array = bytearray(reader.b.read(reader.b.length))
+
+  # Currently only supports combo section for now.
+  id = SECTION_IDS.COMBOS
+  combos_raw_bytes = serialize_section(reader, id)
+  combos_start = reader.section_offsets[id]
+  combos_end = combos_start + reader.section_lengths[id] + 12
+  raw_byte_array[combos_start:combos_end] = combos_raw_bytes
+
+  return raw_byte_array
+
+
+def serialize_section(reader: ZeldaClassicReader, id: bytes) -> bytes:
+  bytes = Bytes(io.BytesIO())
+
+  assert len(id) == 4
+  bytes.write(id)
+  bytes.write_int(reader.section_versions[id])
+  bytes.write_int(reader.section_cversions[id])
+  bytes.write_long(0)
+  assert len(bytes.f.getvalue()) == 12
+
+  write_field(bytes, reader.combos, reader.section_fields[id])
+
+  bytes.f.seek(8)
+  bytes.write_long(len(bytes.f.getvalue()) - 12)
+
+  return bytes.f.getvalue()
+
+
+def write_field(bytes: Bytes, data: Any, field: F):
+  if field.arr_len != None:
+    data_array = data[field.name] if field.name else data
+    if field.encode_arr_len != None:
+      bytes.write_int(len(data_array))
+    for i in range(len(data_array)):
+      write_field_value(bytes, data_array[i], field)
+  else:
+    write_field_value(bytes, data, field)
+
+
+def write_field_value(bytes: Bytes, data: Any, field: F):
+  match field.type:
+    case 'object':
+      for f in field.fields:
+        if f:
+          write_field(bytes, data[f.name], f)
+    case 'I':
+      bytes.write_long(data)
+    case 'H':
+      bytes.write_int(data)
+    case 'B':
+      bytes.write_byte(data)
+    case 'str':
+      # TODO
+      raise Exception(f'TODO implement write_str')
+    case _:
+      raise Exception(f'unexpected type {field.type}')
 
 
 def if_(bool: bool, first: Any, second: Any):
   return first if bool else second
 
 
-def read_section(bytes, id, zelda_version, sversion):
-  fields = get_fields(bytes, id, zelda_version, sversion)
-  return read_field(bytes, fields)
+def read_section(bytes, id, zelda_version, sversion) -> Tuple[Any, F]:
+  field = get_section_field(bytes, id, zelda_version, sversion)
+  return read_field(bytes, field), field
 
 
-def get_fields(bytes, id, zelda_version, sversion):
+def get_section_field(bytes, id, zelda_version, sversion) -> F:
   match id:
     case SECTION_IDS.COMBOS:
-      return combo_fields(bytes, zelda_version, sversion)
+      return combo_field(bytes, zelda_version, sversion)
     case _:
       raise Exception(f'unexpected id {id}')
 
 
-def combo_fields(bytes, zelda_version, sversion):
+def combo_field(bytes, zelda_version, sversion) -> F:
+  encode_arr_len = None
   if zelda_version < 0x174:
     num_combos = 1024
   elif zelda_version < 0x191:
     num_combos = 2048
   else:
     num_combos = bytes.read_int()
+    encode_arr_len = 'H'
 
-  return F(name='', type='object', arr_len=num_combos, fields=[
+  return F(name='', type='object', arr_len=num_combos, encode_arr_len=encode_arr_len, fields=[
     F(name='tile', type=if_(sversion >= 11, 'I', 'H')),
     F(name='flip', type='B' ),
     F(name='walk', type='B' ),

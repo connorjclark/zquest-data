@@ -5,7 +5,7 @@ import traceback
 from zquest.bytes import Bytes
 from decode_wrapper import py_decode, py_encode
 from zquest.pretty_json import pretty_json_format
-from zquest.sections import SECTION_IDS, read_section
+from zquest.sections import SECTION_IDS, read_section, serialize
 from zquest.version import Version
 
 def assert_equal(expected, actual):
@@ -37,6 +37,11 @@ class ZeldaClassicReader:
   def __init__(self, path):
     self.b = Bytes(open(path))
     self.path = path
+    self.section_fields = {}
+    self.section_versions = {}
+    self.section_cversions = {}
+    self.section_offsets = {}
+    self.section_lengths = {}
     self.errors = []
     self.combos = None
     self.tiles = None
@@ -74,7 +79,8 @@ class ZeldaClassicReader:
     header_start = decoded.find(b'HDR')
     if header_start == -1:
       raise Exception('could not find HDR section')
-    self.b = Bytes(io.BytesIO(decoded[header_start:]))
+    self.b = Bytes(io.BytesIO(decoded))
+    self.b.f.seek(header_start)
 
     # actually read the file now
     while self.b.has_bytes():
@@ -126,15 +132,18 @@ class ZeldaClassicReader:
   
   
   def read_section(self):
+    offset = self.b.bytes_read()
     id, section_version, section_cversion = self.read_section_header()
     size = self.b.read_long()
+    self.section_offsets[id] = offset
+    self.section_versions[id] = section_version
+    self.section_cversions[id] = section_cversion
 
     # Sometimes there is garbage data between sections.
     if not re.match("\w{3,4}", id.decode("ascii", errors="ignore")):
       print(f"garbage section id: {id}, skipping ahead some bytes...")
       while id not in vars(SECTION_IDS).values():
-        self.b.bytes_read -= 12
-        self.b.bytes_read += 1
+        self.b.advance(-12 + 1)
         id, section_version, section_cversion = self.read_section_header()
         size = self.b.read_long()
 
@@ -155,10 +164,11 @@ class ZeldaClassicReader:
       SECTION_IDS.MIDIS: self.read_midis,
     }
 
-    if size > self.b.length - self.b.bytes_read:
+    if size > self.b.length - self.b.bytes_read():
       print('section size is bigger than rest of data, clamping')
-      size = self.b.length - self.b.bytes_read
+      size = self.b.length - self.b.bytes_read()
 
+    self.section_lengths[id] = size
     section_bytes = Bytes(io.BytesIO(self.b.read(size)))
     if id in sections:
       print('read_section', id, size, section_version, section_cversion)
@@ -169,7 +179,7 @@ class ZeldaClassicReader:
         print(e)
         self.errors.append("".join(traceback.TracebackException.from_exception(e).format()))
 
-      remaining = size - section_bytes.bytes_read
+      remaining = size - section_bytes.bytes_read()
       if remaining != 0:
         print('section did not consume expected number of bytes. remaining:', remaining)
     else:
@@ -237,7 +247,9 @@ class ZeldaClassicReader:
   
   # https://github.com/ArmageddonGames/ZeldaClassic/blob/30c9e17409304390527fcf84f75226826b46b819/src/qst.cpp#L13150
   def read_combos(self, section_bytes, section_version, section_cversion):
-    self.combos = read_section(section_bytes, SECTION_IDS.COMBOS, self.version.zelda_version, section_version)
+    data, fields = read_section(section_bytes, SECTION_IDS.COMBOS, self.version.zelda_version, section_version)
+    self.combos = data
+    self.section_fields[SECTION_IDS.COMBOS] = fields
   
   # https://github.com/ArmageddonGames/ZeldaClassic/blob/bdac8e682ac1eda23d775dacc5e5e34b237b82c0/src/qst.cpp#L15411
   def read_csets(self, section_bytes, section_version, section_cversion):
@@ -901,9 +913,8 @@ class ZeldaClassicReader:
     self.midi_tracks = midi_tracks
 
   def save_qst(self, qst_path):
-    self.b.rewind()
     with tempfile.NamedTemporaryFile() as tmp:
-      tmp.write(self.b.read(self.b.length))
+      tmp.write(serialize(self))
       err = py_encode(tmp.name, qst_path)
       if err != 0:
         raise Exception(f'error encoding: {err}')
