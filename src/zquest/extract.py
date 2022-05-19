@@ -5,7 +5,7 @@ import traceback
 from zquest.bytes import Bytes
 from decode_wrapper import py_decode, py_encode
 from zquest.pretty_json import pretty_json_format
-from zquest.sections import SECTION_IDS, read_section, serialize
+from zquest.section_utils import SECTION_IDS, read_section, serialize
 from zquest.version import Version
 
 def assert_equal(expected, actual):

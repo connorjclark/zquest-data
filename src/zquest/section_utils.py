@@ -1,9 +1,10 @@
 from __future__ import annotations
-from dataclasses import dataclass
 import io
-from typing import TYPE_CHECKING, Any, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Tuple
 import types
 from zquest.bytes import Bytes
+from zquest.field import F
+from zquest.sections.cmbo import get_cmbo_field
 
 if TYPE_CHECKING:
   from zquest.extract import ZeldaClassicReader
@@ -37,15 +38,6 @@ SECTION_IDS.ITEMDROPSETS = b'DROP'
 SECTION_IDS.FAVORITES = b'FAVS'
 SECTION_IDS.FFSCRIPT = b'FFSC'
 SECTION_IDS.SFX = b'SFX '
-
-@dataclass
-class F:
-  name: str
-  type: str
-  fields: Optional[List[Any]] = None # List[F]
-  arr_len: Optional[int] = None
-  encode_arr_len: Optional[str] = None
-  str_len: Optional[int] = None
 
 
 def read_field_value(bytes: Bytes, field: F):
@@ -142,10 +134,6 @@ def write_field_value(bytes: Bytes, data: Any, field: F):
       raise Exception(f'unexpected type {field.type}')
 
 
-def if_(bool: bool, first: Any, second: Any):
-  return first if bool else second
-
-
 def read_section(bytes, id, zelda_version, sversion) -> Tuple[Any, F]:
   field = get_section_field(bytes, id, zelda_version, sversion)
   return read_field(bytes, field), field
@@ -154,47 +142,6 @@ def read_section(bytes, id, zelda_version, sversion) -> Tuple[Any, F]:
 def get_section_field(bytes, id, zelda_version, sversion) -> F:
   match id:
     case SECTION_IDS.COMBOS:
-      return combo_field(bytes, zelda_version, sversion)
+      return get_cmbo_field(bytes, zelda_version, sversion)
     case _:
       raise Exception(f'unexpected id {id}')
-
-
-def combo_field(bytes, zelda_version, sversion) -> F:
-  encode_arr_len = None
-  if zelda_version < 0x174:
-    num_combos = 1024
-  elif zelda_version < 0x191:
-    num_combos = 2048
-  else:
-    num_combos = bytes.read_int()
-    encode_arr_len = 'H'
-
-  return F(name='', type='object', arr_len=num_combos, encode_arr_len=encode_arr_len, fields=[
-    F(name='tile', type=if_(sversion >= 11, 'I', 'H')),
-    F(name='flip', type='B' ),
-    F(name='walk', type='B' ),
-    F(name='type', type='B' ),
-    F(name='csets', type='B' ),
-    F(name='_padding', type='2s') if zelda_version < 0x193 else None,
-    F(name='_padding', type='16s') if zelda_version == 0x191 else None,
-    F(name='frames', type='B' ),
-    F(name='speed', type='B' ),
-    F(name='nextcombo', type='H' ),
-    F(name='nextcset', type='B' ),
-    F(name='flag', type='B') if sversion >= 3 else None,
-    F(name='skipanim', type='B') if sversion >= 4 else None,
-    F(name='nexttimer', type='H') if sversion >= 4 else None,
-    F(name='skipanimy', type='B') if sversion >= 5 else None,
-    F(name='animflags', type='B') if sversion >= 6 else None,
-    F(name='attributes', arr_len= 4, type='I') if sversion >= 8 else None,
-    F(name='usrflags', type='I') if sversion >= 8 else None,
-    F(name='triggerFlags', arr_len= 2, type='I') if sversion == 9 else None,
-    F(name='triggerLevel', type='I') if sversion == 9 else None,
-    F(name='triggerFlags', arr_len= 3, type='I') if sversion >= 10 else None,
-    F(name='triggerLevel', type='I') if sversion >= 10 else None,
-    F(name='label', arr_len= 11, type='B') if sversion >= 12 else None,
-    F(name='_padding', type='11s') if zelda_version < 0x193 else None,
-    F(name='attributes', arr_len= 4, type='B') if sversion >= 13 else None,
-    F(name='script', type='H') if sversion >= 14 else None,
-    F(name='initd', arr_len= 2, type='I') if sversion >= 14 else None,
-  ])
