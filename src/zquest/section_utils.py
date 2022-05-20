@@ -7,6 +7,7 @@ from .bytes import Bytes
 from .field import F
 from .sections.cmbo import get_cmbo_field
 from .sections.map import get_map_field
+from .sections.dmap import get_dmap_field
 from .version import Version
 
 if TYPE_CHECKING:
@@ -53,7 +54,7 @@ def expand_field_shorthand(field: F) -> F:
       F(type='array', arr_len=3, field=F(type='I'))
     """
     if field.arr_len != None and field.type != 'array':
-        return F(type='array', arr_len=field.arr_len, field=F(type=field.type))
+        return F(type='array', arr_len=field.arr_len, field=F(type=field.type, fields=field.fields))
     else:
         return field
 
@@ -90,7 +91,7 @@ def read_field(bytes: Bytes, field: F):
                 raise 'must have str_len'
             return bytes.read_str(field.str_len)
         case _:
-            raise Exception(f'unexpected type {field.type}')
+            return bytes.read_packed(field.type)
 
 
 def serialize(reader: ZeldaClassicReader) -> bytearray:
@@ -101,6 +102,7 @@ def serialize(reader: ZeldaClassicReader) -> bytearray:
     ids = [
         SECTION_IDS.COMBOS,
         SECTION_IDS.MAPS,
+        SECTION_IDS.DMAPS,
     ]
     # Modify in the same order sections were found in the original file,
     # to avoid messing up the offsets of unprocessed sections.
@@ -130,6 +132,8 @@ def serialize_section(reader: ZeldaClassicReader, id: bytes) -> bytes:
             write_field(bytes, reader.combos, reader.section_fields[id])
         case SECTION_IDS.MAPS:
             write_field(bytes, reader.maps, reader.section_fields[id])
+        case SECTION_IDS.DMAPS:
+            write_field(bytes, reader.dmaps, reader.section_fields[id])
         case _:
             raise Exception(f'unexpected id {id}')
 
@@ -173,7 +177,8 @@ def write_field(bytes: Bytes, data: Any, field: F):
             # TODO
             raise Exception(f'TODO implement write_str')
         case _:
-            raise Exception(f'unexpected type {field.type}')
+            # TODO: use this for everything
+            bytes.write_packed(field.type, data)
 
 
 def read_section(bytes: Bytes, id: bytes, version: Version, sversion: int) -> Tuple[Any, F]:
@@ -188,5 +193,7 @@ def get_section_field(bytes: Bytes, id: bytes, version: Version, sversion: int) 
             return get_cmbo_field(bytes, version, sversion)
         case SECTION_IDS.MAPS:
             return get_map_field(bytes, version, sversion)
+        case SECTION_IDS.DMAPS:
+            return get_dmap_field(bytes, version, sversion)
         case _:
             raise Exception(f'unexpected id {id}')

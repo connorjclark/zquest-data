@@ -1,7 +1,7 @@
 from io import IOBase
 import os
 from struct import *
-from typing import List
+from typing import Any, List
 
 
 class Bytes:
@@ -42,6 +42,12 @@ class Bytes:
 
     def write(self, n: int):
         self.f.write(n)
+
+    def read_packed(self, format: str) -> Any:
+        return unpack(format, self.read(calcsize(format)))[0]
+
+    def write_packed(self, format: str, val: Any):
+        self.f.write(pack(format, val))
 
     def read_byte(self) -> int:
         return unpack('B', self.read(1))[0]

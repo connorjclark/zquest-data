@@ -13,10 +13,10 @@ def assert_equal(expected, actual):
     if expected != actual:
         raise Exception(f'expected {expected} but got {actual}')
 
-# TODO: deprecated, remove.
-
 
 def read_data(dest, section_version, descriptors):
+    """TODO: deprecated, remove."""
+
     for key, read in descriptors.items():
         if key in dest:
             raise f'already using key: {key}'
@@ -251,8 +251,8 @@ class ZeldaClassicReader:
     # https://github.com/ArmageddonGames/ZeldaClassic/blob/30c9e17409304390527fcf84f75226826b46b819/src/qst.cpp#L13150
 
     def read_combos(self, section_bytes, section_version, section_cversion):
-        data, fields = read_section(
-            section_bytes, SECTION_IDS.COMBOS, self.version, section_version)
+        data, fields = read_section(section_bytes, SECTION_IDS.COMBOS,
+                                    self.version, section_version)
         self.combos = data
         self.section_fields[SECTION_IDS.COMBOS] = fields
 
@@ -306,86 +306,12 @@ class ZeldaClassicReader:
         }
 
     def read_dmaps(self, section_bytes, section_version, section_cversion):
-        num_dmaps = section_bytes.read_int()
-
-        self.dmaps = []
-        for _ in range(num_dmaps):
-            dmap = {}
-            self.dmaps.append(dmap)
-
-            if section_version < 9:
-                raise 'TODO'
-
-            read_data(dmap, section_version, {
-                'map': lambda: section_bytes.read_byte(),
-                'level': {
-                    5: lambda: section_bytes.read_int(),
-                    0: lambda: section_bytes.read_byte(),
-                },
-                'xoff': lambda: section_bytes.read_byte(),
-                'compass': lambda: section_bytes.read_byte(),
-                'color': {
-                    9: lambda: section_bytes.read_int(),
-                    0: lambda: section_bytes.read_byte(),
-                },
-                'midi': lambda: section_bytes.read_byte(),
-                'cont': lambda: section_bytes.read_byte(),
-                'type': lambda: section_bytes.read_byte(),
-                'grid': lambda: section_bytes.read_array(1, 8),
-            })
-
-            if self.version < Version(zelda_version=0x192, build=41):
-                raise 'TODO'
-
-            read_data(dmap, section_version, {
-                'name': lambda: section_bytes.read_str(21),
-                'title': lambda: section_bytes.read_str(21),
-                'intro': lambda: section_bytes.read_str(73),
-            })
-
-            dmap['minimap'] = []
-            for __ in range(4):
-                entry = {}
-                dmap['minimap'].append(entry)
-
-                read_data(entry, section_version, {
-                    'tile': {
-                        11: lambda: section_bytes.read_long(),
-                        0: lambda: section_bytes.read_int(),
-                    },
-                    'cset': lambda: section_bytes.read_byte(),
-                })
-
-            read_data(dmap, section_version, {
-                'tmusic': lambda: section_bytes.read_array(1, 56),
-                'tmusictrack':       {2: lambda: section_bytes.read_byte()},
-                'active_subscreen':  {2: lambda: section_bytes.read_byte()},
-                'passive_subscreen': {2: lambda: section_bytes.read_byte()},
-                'di':                {3: lambda: section_bytes.read_array(1, 32)},
-                'flags': {
-                    6: lambda: section_bytes.read_long(),
-                    4: lambda: section_bytes.read_byte(),
-                },
-            })
-
-            if self.version > Version(zelda_version=0x192, build=41) and self.version < Version(zelda_version=0x193):
-                # padding
-                section_bytes.read_byte()
-
-            read_data(dmap, section_version, {
-                'sideview':           {10: lambda: section_bytes.read_byte()},
-                'script':             {12: lambda: section_bytes.read_int()},
-                'initD':              {12: lambda: section_bytes.read_array(4, 8)},
-                'initD_label':        {13: lambda: section_bytes.read_array(1, 8 * 65)},
-                'active_sub_script':  {14: lambda: section_bytes.read_int()},
-                'passive_sub_script': {14: lambda: section_bytes.read_int()},
-                'sub_initD':          {14: lambda: section_bytes.read_array(4, 8)},
-                'sub_initD_label':    {14: lambda: section_bytes.read_array(1, 8 * 65)},
-            })
+        data, fields = read_section(section_bytes, SECTION_IDS.DMAPS, self.version, section_version)
+        self.dmaps = data
+        self.section_fields[SECTION_IDS.DMAPS] = fields
 
     def read_maps(self, section_bytes, section_version, section_cversion):
-        data, fields = read_section(
-            section_bytes, SECTION_IDS.MAPS, self.version, section_version)
+        data, fields = read_section(section_bytes, SECTION_IDS.MAPS, self.version, section_version)
         self.maps = data
         self.section_fields[SECTION_IDS.MAPS] = fields
 
