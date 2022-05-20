@@ -54,7 +54,23 @@ class TestReader(unittest.TestCase):
         reader.read_qst()
         self.assertEqual(len(reader.combos), 161)
         self.assertEqual(reader.combos[0]['tile'], 316)
+        self.assertEqual(reader.combos[160]['tile'], 316)
         self.assertEqual(reader.maps[2]['screens'][0]['color'], 7)
+
+    def test_modify_qst_add_map(self):
+        reader = ZeldaClassicReader('test_data/1st.qst')
+        reader.read_qst()
+        self.assertEqual(len(reader.maps), 3)
+        self.assertEqual(reader.maps[0]['screens'][10]['str'], 6)
+        reader.maps.append(reader.maps[0].copy())
+        reader.save_qst('.tmp/1st-test.qst')
+
+        reader = ZeldaClassicReader('.tmp/1st-test.qst')
+        reader.read_qst()
+        self.assertEqual(len(reader.maps), 4)
+        self.assertEqual(reader.maps[0]['screens'][10]['str'], 6)
+        self.assertEqual(reader.maps[3]['screens'][10]['str'], 6)
+        self.assertEqual(reader.combos[0]['tile'], 316)
 
 
 if __name__ == '__main__':
