@@ -2,7 +2,7 @@ import unittest
 import io
 from src.zquest.bytes import Bytes
 
-class TestStringMethods(unittest.TestCase):
+class TestBytes(unittest.TestCase):
 
     def test_read_str(self):
         with open(__file__, 'rb') as f:

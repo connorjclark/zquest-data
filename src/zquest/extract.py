@@ -2,11 +2,11 @@ import io
 import re
 import tempfile
 import traceback
-from zquest.bytes import Bytes
+from .bytes import Bytes
 from decode_wrapper import py_decode, py_encode
-from zquest.pretty_json import pretty_json_format
-from zquest.section_utils import SECTION_IDS, read_section, serialize
-from zquest.version import Version
+from .pretty_json import pretty_json_format
+from .section_utils import SECTION_IDS, read_section, serialize
+from .version import Version
 
 def assert_equal(expected, actual):
   if expected != actual:
@@ -68,7 +68,11 @@ class ZeldaClassicReader:
     # assert_equal(preamble, self.b.read(len(preamble)))
 
     outpath = './output/decoded.data'
-    err = py_decode(self.path, outpath)
+    (err, key) = py_decode(self.path, outpath)
+    # Only bother with the stupid key (which we can set to be anything)
+    # so the _exact_ same bytes can be written back and verify reading and
+    # writing works without error.
+    self.key = key
     if err != 0:
       raise Exception(f'error decoding: {err}')
 
@@ -662,7 +666,7 @@ class ZeldaClassicReader:
   def save_qst(self, qst_path):
     with tempfile.NamedTemporaryFile() as tmp:
       tmp.write(serialize(self))
-      err = py_encode(tmp.name, qst_path)
+      err = py_encode(tmp.name, qst_path, self.key)
       if err != 0:
         raise Exception(f'error encoding: {err}')
 

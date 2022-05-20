@@ -1,6 +1,6 @@
-from zquest.bytes import Bytes
-from zquest.field import F
-from zquest.version import Version
+from ..bytes import Bytes
+from ..field import F
+from ..version import Version
 
 
 def get_map_field(bytes: Bytes, version: Version, sversion: int) -> F:

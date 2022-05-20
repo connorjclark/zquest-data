@@ -8,3 +8,4 @@ output
 quests
 *.egg-info
 decode_wrapper.c
+.tmp

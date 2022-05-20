@@ -3,14 +3,14 @@ import io
 from typing import TYPE_CHECKING, Any, Tuple
 import types
 
-from zquest.bytes import Bytes
-from zquest.field import F
-from zquest.sections.cmbo import get_cmbo_field
-from zquest.sections.map import get_map_field
-from zquest.version import Version
+from .bytes import Bytes
+from .field import F
+from .sections.cmbo import get_cmbo_field
+from .sections.map import get_map_field
+from .version import Version
 
 if TYPE_CHECKING:
-  from zquest.extract import ZeldaClassicReader
+  from .extract import ZeldaClassicReader
 
 # https://github.com/ArmageddonGames/ZeldaClassic/blob/30c9e17409304390527fcf84f75226826b46b819/src/zdefs.h#L155
 SECTION_IDS = types.SimpleNamespace()
