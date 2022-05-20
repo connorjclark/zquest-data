@@ -102,6 +102,10 @@ def serialize(reader: ZeldaClassicReader) -> bytearray:
         SECTION_IDS.COMBOS,
         SECTION_IDS.MAPS,
     ]
+    # Modify in the same order sections were found in the original file,
+    # to avoid messing up the offsets of unprocessed sections.
+    ids.sort(key=lambda id: -reader.section_offsets[id])
+
     for id in ids:
         combos_raw_bytes = serialize_section(reader, id)
         combos_start = reader.section_offsets[id]
