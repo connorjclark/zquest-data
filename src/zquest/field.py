@@ -2,10 +2,6 @@ from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
 
-def if_(bool: bool, first: Any, second: Any):
-  return first if bool else second
-
-
 @dataclass
 class F:
   type: str

@@ -1,5 +1,5 @@
 from ..bytes import Bytes
-from ..field import F, if_
+from ..field import F
 from ..version import Version
 
 
@@ -14,7 +14,7 @@ def get_cmbo_field(bytes: Bytes, version: Version, sversion: int) -> F:
     encode_arr_len = 'H'
 
   combo_field = F(type='object', fields={
-    'tile': F(type=if_(sversion >= 11, 'I', 'H')),
+    'tile': F(type='I' if sversion >= 11 else 'H'),
     'flip': F(type='B' ),
     'walk': F(type='B' ),
     'type': F(type='B' ),
