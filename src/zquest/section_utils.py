@@ -49,10 +49,18 @@ def expand_field_shorthand(field: F) -> F:
     Allows for shorthand fields.
 
     Expands:
+      'B'
+    To:
+      F(type='B')
+
+    Expands:
       F(arr_len=3, type='I')
     To:
       F(type='array', arr_len=3, field=F(type='I'))
     """
+
+    if type(field) == str:
+        return F(type=field)
     if field.arr_len != None and field.type != 'array':
         return F(type='array', arr_len=field.arr_len, field=F(type=field.type, fields=field.fields))
     else:
