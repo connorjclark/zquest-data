@@ -80,16 +80,6 @@ def read_field(bytes: Bytes, field: F):
                 if f:
                     result[key] = read_field(bytes, f)
             return result
-        case 'I':
-            return bytes.read_long()
-        case 'H':
-            return bytes.read_int()
-        case 'B':
-            return bytes.read_byte()
-        case 'str':
-            if field.str_len == None:
-                raise 'must have str_len'
-            return bytes.read_str(field.str_len)
         case _:
             return bytes.read_packed(field.type)
 
@@ -167,17 +157,7 @@ def write_field(bytes: Bytes, data: Any, field: F):
             for key, f in field.fields.items():
                 if f:
                     write_field(bytes, data[key], f)
-        case 'I':
-            bytes.write_long(data)
-        case 'H':
-            bytes.write_int(data)
-        case 'B':
-            bytes.write_byte(data)
-        case 'str':
-            # TODO
-            raise Exception(f'TODO implement write_str')
         case _:
-            # TODO: use this for everything
             bytes.write_packed(field.type, data)
 
 
