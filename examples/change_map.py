@@ -30,7 +30,6 @@ reader = ZeldaClassicReader(os.path.join(dir, '../output/1st-modified.qst'))
 reader.read_qst()
 
 assert len(reader.maps) == 3
-# TODO: does not persist yet
 assert reader.maps[2]['screens'][0]['color'] == 9
 for i, map in enumerate(reader.maps):
     print(f'map #{i}')

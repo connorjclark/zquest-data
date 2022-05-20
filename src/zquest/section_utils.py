@@ -100,7 +100,7 @@ def serialize(reader: ZeldaClassicReader) -> bytearray:
     # TODO: Currently doesn't support every section.
     ids = [
         SECTION_IDS.COMBOS,
-        # SECTION_IDS.MAPS,
+        SECTION_IDS.MAPS,
     ]
     for id in ids:
         combos_raw_bytes = serialize_section(reader, id)
