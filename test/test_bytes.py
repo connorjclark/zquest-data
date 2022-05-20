@@ -2,6 +2,7 @@ import unittest
 import io
 from src.zquest.bytes import Bytes
 
+
 class TestBytes(unittest.TestCase):
 
     def test_read_str(self):
@@ -18,6 +19,7 @@ class TestBytes(unittest.TestCase):
         self.assertEqual(b.read_byte(), 0)
         self.assertEqual(b.read_byte(), 1)
         self.assertEqual(b.read_byte(), 2)
+
 
 if __name__ == '__main__':
     unittest.main()
