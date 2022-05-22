@@ -8,6 +8,7 @@ from .field import F
 from .sections.cmbo import get_cmbo_field
 from .sections.map import get_map_field
 from .sections.dmap import get_dmap_field
+from .sections.tile import get_tile_field
 from .version import Version
 
 if TYPE_CHECKING:
@@ -67,7 +68,16 @@ def expand_field_shorthand(field: F) -> F:
         return field
 
 
-def read_field(bytes: Bytes, field: F):
+def eval_value(val: int | Any, data: Any):
+    if callable(val):
+        return val(data)
+    elif type(val) == int:
+        return val
+    else:
+        raise Exception(f'unhandled type {type(val)}: can\'t handle {val}')
+
+
+def read_field(bytes: Bytes, field: F, root_data: Any = None):
     field = expand_field_shorthand(field)
     match field.type:
         case 'array':
@@ -79,14 +89,15 @@ def read_field(bytes: Bytes, field: F):
                     result.append(read_field(bytes, field.field)
                                   if (mask >> i) & 1 else None)
             else:
-                for _ in range(field.arr_len):
+                arr_len = eval_value(field.arr_len, root_data)
+                for _ in range(arr_len):
                     result.append(read_field(bytes, field.field))
             return result
         case 'object':
             result = {}
             for key, f in field.fields.items():
                 if f:
-                    result[key] = read_field(bytes, f)
+                    result[key] = read_field(bytes, f, root_data if root_data else result)
             return result
         case _:
             return bytes.read_packed(field.type)
@@ -101,6 +112,7 @@ def serialize(reader: ZeldaClassicReader) -> bytearray:
         SECTION_IDS.COMBOS,
         SECTION_IDS.MAPS,
         SECTION_IDS.DMAPS,
+        SECTION_IDS.TILES,
     ]
     # Modify in the same order sections were found in the original file,
     # to avoid messing up the offsets of unprocessed sections.
@@ -132,6 +144,8 @@ def serialize_section(reader: ZeldaClassicReader, id: bytes) -> bytes:
             write_field(bytes, reader.maps, reader.section_fields[id])
         case SECTION_IDS.DMAPS:
             write_field(bytes, reader.dmaps, reader.section_fields[id])
+        case SECTION_IDS.TILES:
+            write_field(bytes, reader.tiles, reader.section_fields[id])
         case _:
             raise Exception(f'unexpected id {id}')
 
@@ -183,5 +197,7 @@ def get_section_field(bytes: Bytes, id: bytes, version: Version, sversion: int) 
             return get_map_field(bytes, version, sversion)
         case SECTION_IDS.DMAPS:
             return get_dmap_field(bytes, version, sversion)
+        case SECTION_IDS.TILES:
+            return get_tile_field(bytes, version, sversion)
         case _:
             raise Exception(f'unexpected id {id}')

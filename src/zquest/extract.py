@@ -215,38 +215,26 @@ class ZeldaClassicReader:
     # https://github.com/ArmageddonGames/ZeldaClassic/blob/30c9e17409304390527fcf84f75226826b46b819/src/zq_class.cpp#L9184
 
     def read_tiles(self, section_bytes, section_version, section_cversion):
-        # ZC250MAXTILES = 32760
-        # NEWMAXTILES = 214500
+        data, fields = read_section(section_bytes, SECTION_IDS.TILES,
+                                    self.version, section_version)
+        self.tiles = data
+        self.section_fields[SECTION_IDS.TILES] = fields
 
-        if self.version >= Version(zelda_version=0x254, build=41):
-            tiles_used = section_bytes.read_long()
-        else:
-            tiles_used = section_bytes.read_int()
-
-        tiles = []
-        while section_bytes.has_bytes():
-            tile_format = 1
-            if self.version > Version(zelda_version=0x211, build=4):
-                tile_format = section_bytes.read_byte()
-
-            pixels = section_bytes.read_array(1, self.tilesize(tile_format))
-
-            match tile_format:
+        for tile in self.tiles:
+            format = tile['format'] if 'format' in tile else 1
+            compressed_pixels = tile['compressed_pixels']
+            match format:
                 case 1:
                     # 1 byte per 2 pixels
-                    pixels_expanded = []
-                    for val in pixels:
-                        pixels_expanded.append(val & 0xF)
-                        pixels_expanded.append((val >> 4) & 0xF)
-                    pixels = pixels_expanded
+                    pixels = []
+                    for val in compressed_pixels:
+                        pixels.append(val & 0xF)
+                        pixels.append((val >> 4) & 0xF)
+                    tile['pixels'] = pixels
                 case 0 | 2 | 3:
-                    pass
+                    tile['pixels'] = pixels
                 case _:
-                    raise Exception(f'unexpected format {tile_format}')
-
-            tiles.append(pixels)
-
-        self.tiles = tiles
+                    raise Exception(f'unexpected format {format}')
 
     # https://github.com/ArmageddonGames/ZeldaClassic/blob/30c9e17409304390527fcf84f75226826b46b819/src/qst.cpp#L13150
 
