@@ -32,16 +32,17 @@ bash test.sh
 ## Usage
 
 ```
-usage: main.py [-h] [--save-midis] [--save-tiles] [--save-csets] input
+usage: main.py [-h] [--save-midis] [--save-tiles] [--cset CSET] [--save-csets] input
 
 positional arguments:
   input
 
 options:
   -h, --help    show this help message and exit
-  --save-midis  Extracts MIDI files and saves to output folder
-  --save-tiles  Extracts tilesheets as PNG for a particular cset and saves to output folder
-  --save-csets  Extracts csets as GPL files (ex: for use in Aseprite) and saves to output folder
+  --save-midis  extracts MIDI files and saves to output folder (default: False)
+  --save-tiles  extracts tilesheets as PNG for a particular cset and saves to output folder (default: False)
+  --cset CSET   cset to use for --save-tiles. Set to -1 to save as raw index values (default: -1)
+  --save-csets  extracts csets as GPL files (ex: for use in Aseprite) and saves to output folder (default: False)
 ```
 
 ```sh

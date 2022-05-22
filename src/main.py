@@ -3,11 +3,16 @@ import struct
 from PIL import Image
 from zquest.extract import ZeldaClassicReader
 
-parser = argparse.ArgumentParser()
+parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument('input', type=str)
-parser.add_argument('--save-midis', action='store_true', help='Extracts MIDI files and saves to output folder')
-parser.add_argument('--save-tiles', action='store_true', help='Extracts tilesheets as PNG for a particular cset and saves to output folder')
-parser.add_argument('--save-csets', action='store_true', help='Extracts csets as GPL files (ex: for use in Aseprite) and saves to output folder')
+parser.add_argument('--save-midis', action='store_true',
+                    help='extracts MIDI files and saves to output folder')
+parser.add_argument('--save-tiles', action='store_true',
+                    help='extracts tilesheets as PNG for a particular cset and saves to output folder')
+parser.add_argument('--cset', type=int, default=-1,
+                    help='cset to use for --save-tiles. Set to -1 to save as raw index values')
+parser.add_argument('--save-csets', action='store_true',
+                    help='extracts csets as GPL files (ex: for use in Aseprite) and saves to output folder')
 options = parser.parse_args()
 
 
@@ -85,6 +90,13 @@ if __name__ == "__main__":
 
         tile_index = 0
         page_index = 0
+
+        if options.cset == -1:
+            colors = [(0, 0, i) for i in range(16)]
+            colors[0] = (0, 0, 0, 0)
+        else:
+            colors = reader.csets['cset_colors'][options.cset]
+
         while tile_index < len(reader.tiles):
             img = Image.new('RGBA', (tiles_per_row * sprite_size, rows_per_page * sprite_size))
             pixels = img.load()
@@ -103,20 +115,7 @@ if __name__ == "__main__":
                         cset_offset = tile['pixels'][tile_offset]  # 0-15
                         x = spritesheet_x + tx
                         y = spritesheet_y + ty
-
-                        EXPORT_WITH_CSET = None
-                        # EXPORT_WITH_CSET = 3
-                        if EXPORT_WITH_CSET is None:
-                            if (cset_offset == 0):
-                                pixels[x, y] = (0, 0, 0, 0)
-                            else:
-                                pixels[x, y] = (0, 0, cset_offset)
-                        else:
-                            if (cset_offset == 0):
-                                pixels[x, y] = (0, 0, 0, 0)
-                            else:
-                                color = cset_colors[EXPORT_WITH_CSET][cset_offset]
-                                pixels[x, y] = color
+                        pixels[x, y] = colors[cset_offset]
 
             img.save(f'output/tiles_{str(page_index).zfill(3)}.png')
             page_index += 1
