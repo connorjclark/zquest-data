@@ -164,6 +164,7 @@ class ZeldaClassicReader:
             SECTION_IDS.LINKSPRITES: self.read_link_sprites,
             SECTION_IDS.ITEMS: self.read_items,
             SECTION_IDS.MIDIS: self.read_midis,
+            SECTION_IDS.DOORS: self.read_doors,
         }
 
         if size > self.b.length - self.b.bytes_read():
@@ -568,6 +569,11 @@ class ZeldaClassicReader:
 
         self.midis = midis
         self.midi_tracks = midi_tracks
+
+    def read_doors(self, section_bytes, section_version, section_cversion):
+        data, fields = read_section(section_bytes, SECTION_IDS.DOORS, self.version, section_version)
+        self.doors = data
+        self.section_fields[SECTION_IDS.DOORS] = fields
 
     def save_qst(self, qst_path):
         with tempfile.NamedTemporaryFile() as tmp:
