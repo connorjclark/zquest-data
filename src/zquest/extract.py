@@ -197,18 +197,6 @@ class ZeldaClassicReader:
     #   sizes = [-1, 4, 8, 16, 24, 32, -1]
     #   return sizes[tfbit]
 
-    # https://github.com/ArmageddonGames/ZeldaClassic/blob/b56ba20bc6be4a8e4bf01c7c681238d545069baf/src/tiles.cpp#L2579
-
-    def tilesize(self, format):
-        if format == 5:
-            return 1024
-        if format == 4:
-            return 768
-        if format >= 1 and format <= 3:
-            return 64 << format
-
-        return 256
-
     def read_gpak(self, section_version, section_cversion):
         pass
 
