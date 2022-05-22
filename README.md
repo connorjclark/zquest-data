@@ -31,6 +31,19 @@ bash test.sh
 
 ## Usage
 
+```
+usage: main.py [-h] [--save-midis] [--save-tiles] [--save-csets] input
+
+positional arguments:
+  input
+
+options:
+  -h, --help    show this help message and exit
+  --save-midis  Extracts MIDI files and saves to output folder
+  --save-tiles  Extracts tilesheets as PNG for a particular cset and saves to output folder
+  --save-csets  Extracts csets as GPL files (ex: for use in Aseprite) and saves to output folder
+```
+
 ```sh
 python3 src/main.py "test_data/1st.qst"
 ```

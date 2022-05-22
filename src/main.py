@@ -1,14 +1,13 @@
 import argparse
-import re
 import struct
 from PIL import Image
 from zquest.extract import ZeldaClassicReader
 
 parser = argparse.ArgumentParser()
 parser.add_argument('input', type=str)
-parser.add_argument('--save-midis', action='store_true')
-parser.add_argument('--save-tiles', action='store_true')
-parser.add_argument('--save-csets', action='store_true')
+parser.add_argument('--save-midis', action='store_true', help='Extracts MIDI files and saves to output folder')
+parser.add_argument('--save-tiles', action='store_true', help='Extracts tilesheets as PNG for a particular cset and saves to output folder')
+parser.add_argument('--save-csets', action='store_true', help='Extracts csets as GPL files (ex: for use in Aseprite) and saves to output folder')
 options = parser.parse_args()
 
 
