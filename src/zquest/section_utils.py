@@ -105,8 +105,7 @@ def read_field(bytes: Bytes, field: F, root_data: Any = None):
         case 'array':
             result = []
             if field.arr_bitmask:
-                # TODO: do not hardcode type
-                mask = bytes.read_long()
+                mask = bytes.read_packed(field.arr_bitmask)
                 for i in range(field.arr_len):
                     result.append(read_field(bytes, field.field)
                                   if (mask >> i) & 1 else None)
@@ -194,7 +193,7 @@ def write_field(bytes: Bytes, data: Any, field: F):
                 for i in range(len(data)):
                     if data[i]:
                         mask |= 1 << i
-                bytes.write_long(mask)
+                bytes.write_packed(field.arr_bitmask, mask)
                 for i in range(len(data)):
                     if data[i] != None:
                         write_field(bytes, data[i], field.field)

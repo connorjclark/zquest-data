@@ -8,5 +8,5 @@ class F:
     field: Optional['F'] = None  # only used for array type
     fields: Optional[Dict[str, Union['F', str]]] = None  # only used for object type
     arr_len: Optional[Union[int, str, Callable]] = None
-    arr_bitmask: Optional[bool] = None
+    arr_bitmask: Optional[str] = None
     str_len: Optional[int] = None

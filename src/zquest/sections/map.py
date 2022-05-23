@@ -97,7 +97,7 @@ def get_map_field(version: Version, sversion: int) -> F:
         'lensLayer': 'B' if sversion >= 17 else None,
 
         **({
-            'ff': F(type='array', arr_len=32, arr_bitmask=True, field=F(type='object', fields={
+            'ff': F(type='array', arr_len=32, arr_bitmask='I', field=F(type='object', fields={
                 'data': 'H',
                 'cset': 'B',
                 'delay': 'H',
