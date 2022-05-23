@@ -1,17 +1,14 @@
-from ..bytes import Bytes
 from ..field import F
 from ..version import Version
 
 
-def get_cmbo_field(bytes: Bytes, version: Version, sversion: int) -> F:
-    encode_arr_len = None
+def get_cmbo_field(version: Version, sversion: int) -> F:
     if version.zelda_version < 0x174:
         num_combos = 1024
     elif version.zelda_version < 0x191:
         num_combos = 2048
     else:
-        num_combos = bytes.read_int()
-        encode_arr_len = 'H'
+        num_combos = 'H'
 
     combo_field = F(type='object', fields={
         'tile': 'I' if sversion >= 11 else 'H',
@@ -43,4 +40,4 @@ def get_cmbo_field(bytes: Bytes, version: Version, sversion: int) -> F:
         'initd': F(arr_len=2, type='I') if sversion >= 14 else None,
     })
 
-    return F(type='array', arr_len=num_combos, encode_arr_len=encode_arr_len, field=combo_field)
+    return F(type='array', arr_len=num_combos, field=combo_field)

@@ -17,7 +17,7 @@ def tilesize(format: int) -> int:
     return 256
 
 
-def get_tile_field(bytes: Bytes, version: Version, sversion: int) -> F:
+def get_tile_field(version: Version, sversion: int) -> F:
     def format_to_data_len(data):
         format = data['format'] if 'format' in data else 1
         return tilesize(format)
@@ -28,7 +28,7 @@ def get_tile_field(bytes: Bytes, version: Version, sversion: int) -> F:
     })
 
     if version >= Version(zelda_version=0x254, build=41):
-        tile_count = bytes.read_long()
+        tiles_arr_len = 'I'
     else:
-        tile_count = bytes.read_int()
-    return F(type='array', arr_len=tile_count, encode_arr_len='H', field=tile_field)
+        tiles_arr_len = 'H'
+    return F(type='array', arr_len=tiles_arr_len, field=tile_field)

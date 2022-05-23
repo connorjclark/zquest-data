@@ -87,13 +87,17 @@ def normalize_field(field: F):
     return field
 
 
-def eval_value(val: int | Any, data: Any):
-    if callable(val):
-        return val(data)
-    elif type(val) == int:
-        return val
+def eval_arr_len(field: F, bytes: Bytes, data: Any):
+    arr_len = field.arr_len
+
+    if type(arr_len) == int:
+        return arr_len
+    elif type(arr_len) == str:
+        return bytes.read_packed(arr_len)
+    elif callable(arr_len):
+        return arr_len(data)
     else:
-        raise Exception(f'unhandled type {type(val)}: can\'t handle {val}')
+        raise Exception(f'unhandled type {type(arr_len)}: can\'t handle {arr_len}')
 
 
 def read_field(bytes: Bytes, field: F, root_data: Any = None):
@@ -107,7 +111,7 @@ def read_field(bytes: Bytes, field: F, root_data: Any = None):
                     result.append(read_field(bytes, field.field)
                                   if (mask >> i) & 1 else None)
             else:
-                arr_len = eval_value(field.arr_len, root_data)
+                arr_len = eval_arr_len(field, bytes, root_data)
                 for _ in range(arr_len):
                     result.append(read_field(bytes, field.field))
             return result
@@ -182,8 +186,8 @@ def write_field(bytes: Bytes, data: Any, field: F):
     match field.type:
         case 'array':
             assert type(data) == type([])
-            if field.encode_arr_len != None:
-                bytes.write_int(len(data))
+            if type(field.arr_len) == str:
+                bytes.write_packed(field.arr_len, len(data))
 
             if field.arr_bitmask:
                 mask = 0
@@ -205,7 +209,7 @@ def write_field(bytes: Bytes, data: Any, field: F):
 
 
 def read_section(bytes: Bytes, id: bytes, version: Version, sversion: int) -> Tuple[Any, F]:
-    field = get_section_field(bytes, id, version, sversion)
+    field = get_section_field(id, version, sversion)
     return read_field(bytes, field), field
 
 
@@ -233,20 +237,20 @@ def validate_field(field: F):
 
 
 # TODO: move all section reading to this new function
-def get_section_field(bytes: Bytes, id: bytes, version: Version, sversion: int) -> F:
+def get_section_field(id: bytes, version: Version, sversion: int) -> F:
     match id:
         case SECTION_IDS.HEADER:
-            field = get_hdr_field(bytes, version, sversion)
+            field = get_hdr_field(version, sversion)
         case SECTION_IDS.COMBOS:
-            field = get_cmbo_field(bytes, version, sversion)
+            field = get_cmbo_field(version, sversion)
         case SECTION_IDS.MAPS:
-            field = get_map_field(bytes, version, sversion)
+            field = get_map_field(version, sversion)
         case SECTION_IDS.DMAPS:
-            field = get_dmap_field(bytes, version, sversion)
+            field = get_dmap_field(version, sversion)
         case SECTION_IDS.TILES:
-            field = get_tile_field(bytes, version, sversion)
+            field = get_tile_field(version, sversion)
         case SECTION_IDS.DOORS:
-            field = get_door_field(bytes, version, sversion)
+            field = get_door_field(version, sversion)
         case _:
             raise Exception(f'unexpected id {id}')
 

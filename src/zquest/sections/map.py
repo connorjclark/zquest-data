@@ -1,9 +1,8 @@
-from ..bytes import Bytes
 from ..field import F
 from ..version import Version
 
 
-def get_map_field(bytes: Bytes, version: Version, sversion: int) -> F:
+def get_map_field(version: Version, sversion: int) -> F:
     extended_arrays = version > Version(zelda_version=0x211, build=7)
     common_arr_len = 4 if extended_arrays else 1
 
@@ -133,5 +132,4 @@ def get_map_field(bytes: Bytes, version: Version, sversion: int) -> F:
         'screens': F(type='array', arr_len=num_screens, field=screen_field),
     })
 
-    map_count = bytes.read_int()
-    return F(type='array', arr_len=map_count, encode_arr_len='H', field=map_field)
+    return F(type='array', arr_len='H', field=map_field)

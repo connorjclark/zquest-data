@@ -1,9 +1,8 @@
-from ..bytes import Bytes
 from ..field import F
 from ..version import Version
 
 
-def get_dmap_field(bytes: Bytes, version: Version, sversion: int) -> F:
+def get_dmap_field(version: Version, sversion: int) -> F:
     if version < Version(zelda_version=0x192, build=41):
         raise Exception('TODO')
 
@@ -41,5 +40,4 @@ def get_dmap_field(bytes: Bytes, version: Version, sversion: int) -> F:
         'subInitDLabel': F(arr_len=8 * 65, type='B') if sversion >= 14 else None,
     })
 
-    num_dmaps = bytes.read_int()
-    return F(type='array', arr_len=num_dmaps, encode_arr_len='H', field=dmap_field)
+    return F(type='array', arr_len='H', field=dmap_field)

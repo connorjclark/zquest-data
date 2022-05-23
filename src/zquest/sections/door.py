@@ -1,9 +1,8 @@
-from ..bytes import Bytes
 from ..field import F
 from ..version import Version
 
 
-def get_door_field(bytes: Bytes, version: Version, sversion: int) -> F:
+def get_door_field(version: Version, sversion: int) -> F:
     def make_door_field(arr_len: int) -> F:
         return F(type='object', fields={
             'combos': F(arr_len=arr_len, type='H'),
@@ -27,5 +26,4 @@ def get_door_field(bytes: Bytes, version: Version, sversion: int) -> F:
         'expansion': F(arr_len=30, type='B') if version.zelda_version < 0x193 else None,
     })
 
-    num_door_sets = bytes.read_int()
-    return F(type='array', arr_len=num_door_sets, encode_arr_len='H', field=door_set_field)
+    return F(type='array', arr_len='H', field=door_set_field)

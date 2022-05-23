@@ -1,9 +1,8 @@
-from ..bytes import Bytes
 from ..field import F
 from ..version import Version
 
 
-def get_hdr_field(bytes: Bytes, version: Version, sversion: int) -> F:
+def get_hdr_field(version: Version, sversion: int) -> F:
     templatepath_len = 2048
     if sversion == 1:
         templatepath_len = 280
