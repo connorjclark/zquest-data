@@ -204,7 +204,7 @@ class ZeldaClassicReader:
                         pixels.append((val >> 4) & 0xF)
                     tile['pixels'] = pixels
                 case 0 | 2 | 3:
-                    tile['pixels'] = pixels
+                    tile['pixels'] = compressed_pixels
                 case _:
                     raise Exception(f'unexpected format {format}')
 

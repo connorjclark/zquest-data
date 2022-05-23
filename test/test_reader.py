@@ -9,7 +9,6 @@ os.makedirs('.tmp', exist_ok=True)
 
 
 class TestReader(unittest.TestCase):
-
     def test_read_and_write_qst(self):
         reader = ZeldaClassicReader('test_data/1st.qst')
         reader.read_qst()
@@ -25,11 +24,23 @@ class TestReader(unittest.TestCase):
         self.assertEqual(len(reader.maps), 3)
         self.assertEqual(reader.combos[0]['tile'], 316)
 
-        original_hash = hashlib.md5(
-            Path('test_data/1st.qst').read_bytes()).hexdigest()
-        copy_hash = hashlib.md5(
-            Path('.tmp/1st-test.qst').read_bytes()).hexdigest()
-        self.assertEqual(original_hash, copy_hash)
+    def test_read_and_write_qst_no_delta(self):
+        inputs = [
+            'test_data/1st.qst',
+            'test_data/Classic XD.qst',
+            'test_data/lost_isle.qst',
+            'test_data/firebird.qst',
+        ]
+        for input in inputs:
+            reader = ZeldaClassicReader(input)
+            reader.read_qst()
+            reader.save_qst('.tmp/test.qst')
+            reader = ZeldaClassicReader('.tmp/test.qst')
+            reader.read_qst()
+
+            original_hash = hashlib.md5(Path(input).read_bytes()).hexdigest()
+            copy_hash = hashlib.md5(Path('.tmp/test.qst').read_bytes()).hexdigest()
+            self.assertEqual(original_hash, copy_hash)
 
     def test_modify_qst(self):
         reader = ZeldaClassicReader('test_data/1st.qst')
