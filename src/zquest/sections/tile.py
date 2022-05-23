@@ -1,4 +1,3 @@
-from ..bytes import Bytes
 from ..field import F
 from ..version import Version
 
