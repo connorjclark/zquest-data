@@ -2,6 +2,7 @@ from __future__ import annotations
 import io
 from typing import TYPE_CHECKING, Any, Tuple
 import types
+from struct import *
 
 from .bytes import Bytes
 from .field import F
@@ -70,6 +71,22 @@ def expand_field_shorthand(field: F) -> F:
         return field
 
 
+def normalize_field(field: F):
+    field = expand_field_shorthand(field)
+
+    match field.type:
+        case 'array':
+            field.field = normalize_field(field.field)
+        case 'object':
+            fields = {}
+            for key, f in field.fields.items():
+                if f:
+                    fields[key] = normalize_field(f)
+            field.fields = fields
+
+    return field
+
+
 def eval_value(val: int | Any, data: Any):
     if callable(val):
         return val(data)
@@ -80,7 +97,6 @@ def eval_value(val: int | Any, data: Any):
 
 
 def read_field(bytes: Bytes, field: F, root_data: Any = None):
-    field = expand_field_shorthand(field)
     match field.type:
         case 'array':
             result = []
@@ -164,7 +180,6 @@ def serialize_section(reader: ZeldaClassicReader, id: bytes) -> bytes:
 
 
 def write_field(bytes: Bytes, data: Any, field: F):
-    field = expand_field_shorthand(field)
     match field.type:
         case 'array':
             assert type(data) == type([])
@@ -196,20 +211,39 @@ def read_section(bytes: Bytes, id: bytes, version: Version, sversion: int) -> Tu
     return read_field(bytes, field), field
 
 
+def validate_field(field: F):
+    match field.type:
+        case 'array':
+            validate_field(field.field)
+        case 'object':
+            for f in field.fields.values():
+                if f:
+                    validate_field(f)
+        case _:
+            try:
+                calcsize(field.type)
+            except:
+                raise Exception(f'invalid field type: {field.type}')
+
+
 # TODO: move all section reading to this new function
 def get_section_field(bytes: Bytes, id: bytes, version: Version, sversion: int) -> F:
     match id:
         case SECTION_IDS.HEADER:
-            return get_hdr_field(bytes, version, sversion)
+            field = get_hdr_field(bytes, version, sversion)
         case SECTION_IDS.COMBOS:
-            return get_cmbo_field(bytes, version, sversion)
+            field = get_cmbo_field(bytes, version, sversion)
         case SECTION_IDS.MAPS:
-            return get_map_field(bytes, version, sversion)
+            field = get_map_field(bytes, version, sversion)
         case SECTION_IDS.DMAPS:
-            return get_dmap_field(bytes, version, sversion)
+            field = get_dmap_field(bytes, version, sversion)
         case SECTION_IDS.TILES:
-            return get_tile_field(bytes, version, sversion)
+            field = get_tile_field(bytes, version, sversion)
         case SECTION_IDS.DOORS:
-            return get_door_field(bytes, version, sversion)
+            field = get_door_field(bytes, version, sversion)
         case _:
             raise Exception(f'unexpected id {id}')
+
+    field = normalize_field(field)
+    validate_field(field)
+    return field
