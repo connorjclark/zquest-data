@@ -106,29 +106,12 @@ class ZeldaClassicReader:
     # zdefs.h
 
     def read_header(self, section_bytes, section_version, section_cversion):
-        # p_iputw = 2 bytes = b.read_int()
+        data, fields = read_section(section_bytes, SECTION_IDS.HEADER, None, section_version)
+        self.header = data
+        self.section_fields[SECTION_IDS.HEADER] = fields
 
-        zelda_version = section_bytes.read_int()
-        build = section_bytes.read_byte()
-        pw_hash = section_bytes.read_str(16)
-        internal = section_bytes.read_int()
-        quest_number = section_bytes.read_byte()
-        version = section_bytes.read_str(9)
-        min_version = section_bytes.read_str(9)
-        title = section_bytes.read_str(65)
-        author = section_bytes.read_str(65)
-        use_keyfile = section_bytes.read_byte()
-
-        self.version = Version(zelda_version, build)
+        self.version = Version(self.header['zelda_version'], self.header['build'])
         print(self.version)
-        # ...
-
-        print('internal', internal)
-        print('quest_number', quest_number)
-        print('zelda_version', zelda_version)
-        print('min_version', min_version)
-        print('title', title)
-        print('author', author)
 
     def read_section_header(self):
         id = self.b.read(4)

@@ -10,6 +10,7 @@ from .sections.map import get_map_field
 from .sections.dmap import get_dmap_field
 from .sections.tile import get_tile_field
 from .sections.door import get_door_field
+from .sections.hdr import get_hdr_field
 from .version import Version
 
 if TYPE_CHECKING:
@@ -110,6 +111,7 @@ def serialize(reader: ZeldaClassicReader) -> bytearray:
 
     # TODO: Currently doesn't support every section.
     ids = [
+        SECTION_IDS.HEADER,
         SECTION_IDS.COMBOS,
         SECTION_IDS.MAPS,
         SECTION_IDS.DMAPS,
@@ -140,6 +142,8 @@ def serialize_section(reader: ZeldaClassicReader, id: bytes) -> bytes:
     assert len(bytes.f.getvalue()) == 12
 
     match id:
+        case SECTION_IDS.HEADER:
+            write_field(bytes, reader.header, reader.section_fields[id])
         case SECTION_IDS.COMBOS:
             write_field(bytes, reader.combos, reader.section_fields[id])
         case SECTION_IDS.MAPS:
@@ -195,6 +199,8 @@ def read_section(bytes: Bytes, id: bytes, version: Version, sversion: int) -> Tu
 # TODO: move all section reading to this new function
 def get_section_field(bytes: Bytes, id: bytes, version: Version, sversion: int) -> F:
     match id:
+        case SECTION_IDS.HEADER:
+            return get_hdr_field(bytes, version, sversion)
         case SECTION_IDS.COMBOS:
             return get_cmbo_field(bytes, version, sversion)
         case SECTION_IDS.MAPS:
