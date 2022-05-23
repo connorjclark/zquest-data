@@ -114,8 +114,7 @@ def read_field(bytes: Bytes, field: F, root_data: Any = None):
         case 'object':
             result = {}
             for key, f in field.fields.items():
-                if f:
-                    result[key] = read_field(bytes, f, root_data if root_data else result)
+                result[key] = read_field(bytes, f, root_data if root_data else result)
             return result
         case _:
             return bytes.read_packed(field.type)
@@ -200,8 +199,7 @@ def write_field(bytes: Bytes, data: Any, field: F):
                     write_field(bytes, data[i], field.field)
         case 'object':
             for key, f in field.fields.items():
-                if f:
-                    write_field(bytes, data[key], f)
+                write_field(bytes, data[key], f)
         case _:
             bytes.write_packed(field.type, data)
 
@@ -220,6 +218,14 @@ def validate_field(field: F):
                 if f:
                     validate_field(f)
         case _:
+            # Only explicit byte order notation allowed is '>' and '!' (big-endian).
+            # '<' (little-endian) is assumed by default, and not allowed explicitly.
+            if field.type[0] == '@' or field.type[0] == '=':
+                raise Exception(f'bad field: {field.type}. Don\'t use native byte order')
+            if field.type[0] == '<':
+                raise Exception(f'bad field: {field.type}. Drop <, little-endian is assumed')
+            if field.type[0] != '>' and field.type[0] != '!':
+                field.type = f'<{field.type}'
             try:
                 calcsize(field.type)
             except:
