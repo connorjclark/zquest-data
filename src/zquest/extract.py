@@ -112,6 +112,7 @@ class ZeldaClassicReader:
 
         self.version = Version(self.header.zelda_version, self.header.build)
         print(self.version)
+        print(self.header.title)
 
     def read_section_header(self):
         id = self.b.read(4)

@@ -13,6 +13,7 @@ class TestReader(unittest.TestCase):
     def test_read_and_write_qst(self):
         reader = ZeldaClassicReader('test_data/1st.qst')
         reader.read_qst()
+        self.assertEqual(reader.header.title, 'Original NES 1st Quest\x00st Quest')
         self.assertEqual(len(reader.combos), 160)
         self.assertEqual(reader.combos[0].tile, 316)
         self.assertEqual(len(reader.maps), 3)
@@ -21,6 +22,7 @@ class TestReader(unittest.TestCase):
 
         reader = ZeldaClassicReader('.tmp/1st-test.qst')
         reader.read_qst()
+        self.assertEqual(reader.header.title, 'Original NES 1st Quest\x00st Quest')
         self.assertEqual(len(reader.combos), 160)
         self.assertEqual(len(reader.maps), 3)
         self.assertEqual(reader.combos[0].tile, 316)

@@ -84,10 +84,7 @@ class Bytes:
 
     def read_str(self, n: int) -> str:
         raw = self.read(n)
-        if raw.find(b'\x00') != -1:
-            return raw[0:raw.index(b'\x00')].decode('utf-8', errors='ignore')
-        else:
-            return raw.decode('utf-8', errors='ignore')
+        return raw.rstrip(b'\x00').decode('utf-8', errors='ignore')
 
     def debug(self, n):
         b = self.read(n)

@@ -1,5 +1,6 @@
 from __future__ import annotations
 import io
+import re
 from typing import TYPE_CHECKING, Any, Tuple
 import types
 from struct import *
@@ -121,7 +122,10 @@ def read_field(bytes: Bytes, field: F, root_data: Any = None):
                 result[key] = read_field(bytes, f, root_data if root_data else result)
             return types.SimpleNamespace(**result)
         case _:
-            return bytes.read_packed(field.type)
+            val = bytes.read_packed(field.type)
+            if re.match(r'\d+s', field.type):
+                val = val.rstrip(b'\x00').decode('utf-8', errors='ignore')
+            return val
 
 
 def serialize(reader: ZeldaClassicReader) -> bytearray:
@@ -208,6 +212,8 @@ def write_field(bytes: Bytes, data: Any, field: F):
             for key, f in field.fields.items():
                 write_field(bytes, getattr(data, key), f)
         case _:
+            if type(data) == str:
+                data = data.encode()
             bytes.write_packed(field.type, data)
 
 
@@ -231,7 +237,7 @@ def validate_field(field: F):
                 raise Exception(f'bad field: {field.type}. Don\'t use native byte order')
             if field.type[0] == '<':
                 raise Exception(f'bad field: {field.type}. Drop <, little-endian is assumed')
-            if field.type[0] != '>' and field.type[0] != '!':
+            if not re.match(r'\d+s', field.type) and field.type[0] != '>' and field.type[0] != '!':
                 field.type = f'<{field.type}'
             try:
                 calcsize(field.type)
