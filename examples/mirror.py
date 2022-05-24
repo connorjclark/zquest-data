@@ -160,29 +160,29 @@ for zc_map in reader.maps:
 
         # swap up and down
         screen.flags2 = swap_bits(screen.flags2, 0, 1)
-        # TODO: mirror sideWarpIndex
-        if screen.sideWarpIndex != 0:
+        # TODO: mirror side_warp_index
+        if screen.side_warp_index != 0:
             raise Exception('Only quests that use just A warps can be mirrored')
 
-        screen.sideWarpScreen = mirror_1d(screen.sideWarpScreen, map_width, map_height)
-        screen.tileWarpScreen = mirror_1d(screen.tileWarpScreen, map_width, map_height)
+        screen.side_warp_screen = mirror_1d(screen.side_warp_screen, map_width, map_height)
+        screen.tile_warp_screen = mirror_1d(screen.tile_warp_screen, map_width, map_height)
 
         # top-left warp return squares have a special meaning for the test mode position
         # selection–and is 99.99% not really being used. So don't touch it in that case.
-        if any(screen.warpReturnY):
-            screen.warpReturnY = mirror_posy_arr(screen.warpReturnY)
-        screen.itemY = mirror_posy(screen.itemY)
-        screen.stairY = mirror_posy(screen.stairY)
-        screen.warpArrivalY = mirror_posy(screen.warpArrivalY)
-        if hasattr(screen, 'newItemY'):
-            screen.newItemY = mirror_posy_arr(screen.newItemY)
+        if any(screen.warp_return_y):
+            screen.warp_return_y = mirror_posy_arr(screen.warp_return_y)
+        screen.item_y = mirror_posy(screen.item_y)
+        screen.stair_y = mirror_posy(screen.stair_y)
+        screen.warp_arrival_y = mirror_posy(screen.warp_arrival_y)
+        if hasattr(screen, 'newitem_y'):
+            screen.newitem_y = mirror_posy_arr(screen.newitem_y)
 
         screen.doors = mirror_directional_array(screen.doors)
         screen.path = list(map(mirror_direction, screen.path))
-        screen.exitDir = mirror_direction(screen.exitDir)
+        screen.exit_dir = mirror_direction(screen.exit_dir)
 
-        if screen.nextScreen:
-            screen.nextScreen = mirror_screen(screen.nextScreen)
+        if screen.next_screen:
+            screen.next_screen = mirror_screen(screen.next_screen)
 
         if hasattr(screen, 'ff'):
             for ff in screen.ff:

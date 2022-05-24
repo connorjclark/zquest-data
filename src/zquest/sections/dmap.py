@@ -32,12 +32,12 @@ def get_dmap_field(version: Version, sversion: int) -> F:
         '_': 'B' if version > Version(zelda_version=0x192, build=41) and version < Version(zelda_version=0x193, build=0) else None,
         'sideview': 'B' if sversion >= 10 else None,
         'script': 'H' if sversion >= 12 else None,
-        'initD': F(arr_len=8, type='I') if sversion >= 12 else None,
-        'initDLabel': F(arr_len=8 * 65, type='B') if sversion >= 13 else None,
-        'activeSubscript': 'H' if sversion >= 14 else None,
-        'passiveSubscript': 'H' if sversion >= 14 else None,
-        'subInitD': F(arr_len=8, type='I') if sversion >= 14 else None,
-        'subInitDLabel': F(arr_len=8 * 65, type='B') if sversion >= 14 else None,
+        'init_d': F(arr_len=8, type='I') if sversion >= 12 else None,
+        'init_d_label': F(arr_len=8 * 65, type='B') if sversion >= 13 else None,
+        'active_subscript': 'H' if sversion >= 14 else None,
+        'passive_subscript': 'H' if sversion >= 14 else None,
+        'sub_init_d': F(arr_len=8, type='I') if sversion >= 14 else None,
+        'sub_init_d_label': F(arr_len=8 * 65, type='B') if sversion >= 14 else None,
     })
 
     return F(type='array', arr_len='H', field=dmap_field)
