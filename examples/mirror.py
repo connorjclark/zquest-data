@@ -51,8 +51,9 @@ def to_xy(index: int, w: int) -> int:
     return x, y
 
 
-def mirror_screen(y: int) -> int:
-    return screen_height - y - 1
+def mirror_screen(index: int) -> int:
+    x, y = to_xy(index, screen_width)
+    return to_index(x, screen_height - y - 1, screen_width)
 
 
 def mirror_screen_arr(arr: List[int]) -> List[int]:
