@@ -432,77 +432,9 @@ class ZeldaClassicReader:
         }
 
     def read_items(self, section_bytes, section_version, section_cversion):
-        items = []
-
-        num_items = section_bytes.read_int()
-        for _ in range(num_items):
-            item = {}
-            item['name'] = section_bytes.read_str(64)
-            items.append(item)
-
-        for i in range(num_items):
-            item = items[i]
-            if section_version < 25:
-                raise 'TODO'
-
-            if section_version > 35:
-                item['tile'] = section_bytes.read_long()
-            else:
-                item['tile'] = section_bytes.read_int()
-
-            item['misc'] = [section_bytes.read_byte()]
-            item['csets'] = section_bytes.read_byte()
-            item['frames'] = section_bytes.read_byte()
-            item['speed'] = section_bytes.read_byte()
-            item['delay'] = section_bytes.read_byte()
-            item['ltm'] = section_bytes.read_long()
-
-            if section_version > 31:
-                item['family'] = section_bytes.read_long()
-            else:
-                item['family'] = section_bytes.read_byte()
-
-            item['family_type'] = section_bytes.read_byte()
-
-            if section_version >= 31:
-                item['power'] = section_bytes.read_long()
-            else:
-                item['power'] = section_bytes.read_byte()
-
-            if section_version < 41:
-                item['flags'] = section_bytes.read_int()
-            else:
-                item['flags'] = section_bytes.read_long()
-
-            item['script'] = section_bytes.read_int()
-            item['count'] = section_bytes.read_byte()
-            item['amount'] = section_bytes.read_int()
-            item['collect_script'] = section_bytes.read_int()
-
-            item['setmax'] = section_bytes.read_int()
-            item['max'] = section_bytes.read_int()
-            item['playsound'] = section_bytes.read_byte()
-
-            item['initiald'] = section_bytes.read_array(4, 8)
-            item['initiala'] = section_bytes.read_array(1, 2)
-
-            item['wpn'] = section_bytes.read_array(1, 10)
-            item['pickup_hears'] = section_bytes.read_byte()
-
-            item['misc'].extend(section_bytes.read_array(4, 2))
-            item['magic'] = section_bytes.read_byte()
-            item['misc'].extend(section_bytes.read_array(4, 8))
-
-            item['usesound'] = section_bytes.read_byte()
-
-            if section_version >= 26:
-                item['useweapon'] = section_bytes.read_byte()
-                item['usedefense'] = section_bytes.read_byte()
-                item['weaprange'] = section_bytes.read_long()
-                item['weapduration'] = section_bytes.read_long()
-                item['weap_pattern'] = section_bytes.read_array(4, 10)
-
-        self.items = items
+        data, fields = read_section(section_bytes, SECTION_IDS.ITEMS, self.version, section_version)
+        self.items = data
+        self.section_fields[SECTION_IDS.ITEMS] = fields
 
     # "readtunes" in qst.cpp
     def read_midis(self, section_bytes, section_version, section_cversion):
