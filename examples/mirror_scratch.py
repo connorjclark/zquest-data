@@ -8,35 +8,35 @@ def as_str(raw: bytes):
 
 
 for dmap in reader.dmaps:
-    if as_str(dmap['name']) == '' and as_str(dmap['title']) == '':
+    if as_str(dmap.name) == '' and as_str(dmap.title) == '':
         continue
 
     def dmap_to_xy(val):
-        val += dmap['xoff']
+        val += dmap.xoff
         x = val % map_width
         y = math.floor(val / map_width)
         return x, y
 
     def dmap_to_index(x, y):
         index = x + y * map_width
-        return index - dmap['xoff']
+        return index - dmap.xoff
 
-    # xoff = dmap['xoff']
-    # x, y = dmap_to_xy(dmap['cont'])
+    # xoff = dmap.xoff
+    # x, y = dmap_to_xy(dmap.cont)
     # if x != 0:
-    #     print(x,y, dmap['cont'])
+    #     print(x,y, dmap.cont)
     #     y = map_height - y - 1
     #     print(x,y, dmap_to_index(x, y))
-    # dmap['cont'] = dmap_to_index(x, y)
+    # dmap.cont = dmap_to_index(x, y)
 
-    # print(dmap['xoff'])
-    # x, y = to_xy(dmap['xoff'], map_width)
+    # print(dmap.xoff)
+    # x, y = to_xy(dmap.xoff, map_width)
     # y = map_height - y - 1
-    # print('original', dmap['xoff'], to_xy(dmap['xoff'], map_width))
-    # dmap['xoff'] = to_index(x, y, map_width)
-    # print(dmap['xoff'], to_xy(dmap['xoff'], map_width))
+    # print('original', dmap.xoff, to_xy(dmap.xoff, map_width))
+    # dmap.xoff = to_index(x, y, map_width)
+    # print(dmap.xoff, to_xy(dmap.xoff, map_width))
 
-    # dmap['xoff']
+    # dmap.xoff
 
 
 # The following was the first attempt of trying to flip door combo sets.
@@ -52,7 +52,7 @@ def subgrid_matches(door, door_offset, x, y, sw, sh):
     for sx in range(sw):
         for sy in range(sh):
             index = to_index(x + sx, y + sy, screen_width)
-            if original_data[index] != door['combos'][door_offset + sx + sy * sw]:
+            if original_data[index] != door.combos[door_offset + sx + sy * sw]:
                 return False
     return True
 
@@ -69,8 +69,8 @@ def mirror_matching_subgrids(screen, door, door_offset, sw, sh):
         for sx in range(sw):
             for sy in range(sh):
                 index = to_index(x + sx, y + sy, screen_width)
-                screen['data'][index] = door['combos'][door_offset + sx + (sh - sy - 1) * sw]
-                screen['cset'][index] = door['csets'][door_offset + sx + (sh - sy - 1) * sw]
+                screen.data[index] = door.combos[door_offset + sx + (sh - sy - 1) * sw]
+                screen.cset[index] = door.csets[door_offset + sx + (sh - sy - 1) * sw]
 
 
 def replace_matching_subgrids(screen, door, door_offset, with_door, with_door_offset, sw, sh):
@@ -78,11 +78,11 @@ def replace_matching_subgrids(screen, door, door_offset, with_door, with_door_of
         for sx in range(sw):
             for sy in range(sh):
                 index = to_index(x + sx, y + sy, screen_width)
-                screen['data'][index] = with_door['combos'][with_door_offset + sx + sy * sw]
-                screen['cset'][index] = with_door['csets'][with_door_offset + sx + sy * sw]
+                screen.data[index] = with_door.combos[with_door_offset + sx + sy * sw]
+                screen.cset[index] = with_door.csets[with_door_offset + sx + sy * sw]
 
 
-# (inside map['screens'] loop)
+# (inside map.screens loop)
 
 # Door combo sets are >1x1 groups of tiles that need specific handling when
 # mirroring. Locate usages of these combo sets by finding matching subgrids
@@ -92,30 +92,30 @@ def replace_matching_subgrids(screen, door, door_offset, with_door, with_door_of
 OPEN_DOOR_OFFSET = 0
 WALL_OFFSET = 28
 
-original_data = screen['data'].copy()
+original_data = screen.data.copy()
 for door_set in reader.doors:
     replace_matching_subgrids(
-        screen, door_set['up'], OPEN_DOOR_OFFSET, door_set['down'], OPEN_DOOR_OFFSET, 2, 2)
+        screen, door_set.up, OPEN_DOOR_OFFSET, door_set.down, OPEN_DOOR_OFFSET, 2, 2)
     replace_matching_subgrids(
-        screen, door_set['down'], OPEN_DOOR_OFFSET, door_set['up'], OPEN_DOOR_OFFSET, 2, 2)
-    replace_matching_subgrids(screen, door_set['up'],
-                              WALL_OFFSET, door_set['down'], WALL_OFFSET, 2, 2)
-    replace_matching_subgrids(screen, door_set['down'],
-                              WALL_OFFSET, door_set['up'], WALL_OFFSET, 2, 2)
+        screen, door_set.down, OPEN_DOOR_OFFSET, door_set.up, OPEN_DOOR_OFFSET, 2, 2)
+    replace_matching_subgrids(screen, door_set.up,
+                              WALL_OFFSET, door_set.down, WALL_OFFSET, 2, 2)
+    replace_matching_subgrids(screen, door_set.down,
+                              WALL_OFFSET, door_set.up, WALL_OFFSET, 2, 2)
 
-original_data = screen['data']
+original_data = screen.data
 for door_set in reader.doors:
-    mirror_matching_subgrids(screen, door_set['left'], OPEN_DOOR_OFFSET, 2, 3)
-    mirror_matching_subgrids(screen, door_set['right'], OPEN_DOOR_OFFSET, 2, 3)
-    mirror_matching_subgrids(screen, door_set['up'], OPEN_DOOR_OFFSET, 2, 2)
-    mirror_matching_subgrids(screen, door_set['down'], OPEN_DOOR_OFFSET, 2, 2)
-    mirror_matching_subgrids(screen, door_set['up'], WALL_OFFSET, 2, 2)
-    mirror_matching_subgrids(screen, door_set['down'], WALL_OFFSET, 2, 2)
+    mirror_matching_subgrids(screen, door_set.left, OPEN_DOOR_OFFSET, 2, 3)
+    mirror_matching_subgrids(screen, door_set.right, OPEN_DOOR_OFFSET, 2, 3)
+    mirror_matching_subgrids(screen, door_set.up, OPEN_DOOR_OFFSET, 2, 2)
+    mirror_matching_subgrids(screen, door_set.down, OPEN_DOOR_OFFSET, 2, 2)
+    mirror_matching_subgrids(screen, door_set.up, WALL_OFFSET, 2, 2)
+    mirror_matching_subgrids(screen, door_set.down, WALL_OFFSET, 2, 2)
 
-# (inside map['screens'] loop) /end
+# (inside map.screens loop) /end
 
 for door_set in reader.doors:
-    combos_to_not_flip.update(door_set['up']['combos'])
-    combos_to_not_flip.update(door_set['down']['combos'])
-    combos_to_not_flip.update(door_set['left']['combos'])
-    combos_to_not_flip.update(door_set['right']['combos'])
+    combos_to_not_flip.update(door_set.up.combos)
+    combos_to_not_flip.update(door_set.down.combos)
+    combos_to_not_flip.update(door_set.left.combos)
+    combos_to_not_flip.update(door_set.right.combos)

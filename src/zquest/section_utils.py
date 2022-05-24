@@ -118,7 +118,7 @@ def read_field(bytes: Bytes, field: F, root_data: Any = None):
             result = {}
             for key, f in field.fields.items():
                 result[key] = read_field(bytes, f, root_data if root_data else result)
-            return result
+            return types.SimpleNamespace(**result)
         case _:
             return bytes.read_packed(field.type)
 
@@ -202,7 +202,7 @@ def write_field(bytes: Bytes, data: Any, field: F):
                     write_field(bytes, data[i], field.field)
         case 'object':
             for key, f in field.fields.items():
-                write_field(bytes, data[key], f)
+                write_field(bytes, getattr(data, key), f)
         case _:
             bytes.write_packed(field.type, data)
 

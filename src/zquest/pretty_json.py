@@ -1,4 +1,5 @@
 import json
+from types import SimpleNamespace
 import numpy
 
 INDENT = 2
@@ -13,7 +14,9 @@ def pretty_json_format(o, level=2):
     # return json.dumps(o, indent=2)
 
     ret = ""
-    if isinstance(o, dict):
+    if isinstance(o, SimpleNamespace):
+        ret += pretty_json_format(o.__dict__, level)
+    elif isinstance(o, dict):
         ret += "{" + NEWLINE
         comma = ""
         for k, v in o.items():

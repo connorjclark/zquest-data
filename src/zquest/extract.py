@@ -110,7 +110,7 @@ class ZeldaClassicReader:
         self.header = data
         self.section_fields[SECTION_IDS.HEADER] = fields
 
-        self.version = Version(self.header['zelda_version'], self.header['build'])
+        self.version = Version(self.header.zelda_version, self.header.build)
         print(self.version)
 
     def read_section_header(self):
@@ -193,8 +193,8 @@ class ZeldaClassicReader:
         self.section_fields[SECTION_IDS.TILES] = fields
 
         for tile in self.tiles:
-            format = tile['format'] if 'format' in tile else 1
-            compressed_pixels = tile['compressed_pixels']
+            format = tile.format if hasattr(tile, 'format') else 1
+            compressed_pixels = tile.compressed_pixels
             match format:
                 case 1:
                     # 1 byte per 2 pixels
@@ -202,9 +202,9 @@ class ZeldaClassicReader:
                     for val in compressed_pixels:
                         pixels.append(val & 0xF)
                         pixels.append((val >> 4) & 0xF)
-                    tile['pixels'] = pixels
+                    tile.pixels = pixels
                 case 0 | 2 | 3:
-                    tile['pixels'] = compressed_pixels
+                    tile.pixels = compressed_pixels
                 case _:
                     raise Exception(f'unexpected format {format}')
 
