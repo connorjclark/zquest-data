@@ -248,7 +248,7 @@ def mirror_qst(mirror_mode: str, in_path: str, out_path: str):
                     if ff:
                         ff.x, ff.y = mirror_pos(ff.x, ff.y)
 
-    for i, combo in enumerate(reader.combos):
+    for combo in reader.combos:
         hor = combo.flip & 1 != 0
         ver = combo.flip & 2 != 0
         hor, ver = mirror_xy(hor, ver, 1, 1)
