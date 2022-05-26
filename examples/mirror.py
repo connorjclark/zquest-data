@@ -1,17 +1,16 @@
-import context
+import sys
+
+if 'unittest' in sys.modules.keys():
+    from src.zquest.extract import ZeldaClassicReader
+    from src.zquest.constants import combo_type_names
+else:
+    import context
+    from zquest.extract import ZeldaClassicReader
+    from zquest.constants import combo_type_names
+
 import math
 from typing import Any, List, Tuple
-import os
-import hashlib
-from pathlib import Path
 
-from zquest.extract import ZeldaClassicReader
-from zquest.constants import combo_type_names
-
-dir = os.path.dirname(__file__)
-qst_path = os.path.join(dir, '../test_data/1st.qst')
-reader = ZeldaClassicReader(qst_path)
-reader.read_qst()
 
 # Number of tiles in a screen
 screen_width = 16
@@ -38,34 +37,38 @@ def mirror_xy_both(x: int, y: int, w: int, h: int) -> Tuple[int, int]:
     return w - x, h - y
 
 
-mirror_mode = 'horizontal'
-match mirror_mode:
-    case 'vertical': mirror_xy = mirror_xy_vertical
-    case 'horizontal': mirror_xy = mirror_xy_horizontal
-    case 'both': mirror_xy = mirror_xy_both
+def set_mirror_mode(mode: str):
+    global mirror_mode, mirror_xy, is_horizontal_mirror, is_vertical_mirror
+    global directions, directions_mirrored, walkable_flags, walkable_flags_mirrored
 
-is_horizontal_mirror = mirror_mode == 'horizontal' or mirror_mode == 'both'
-is_vertical_mirror = mirror_mode == 'vertical' or mirror_mode == 'both'
+    mirror_mode = mode
+    is_horizontal_mirror = mirror_mode == 'horizontal' or mirror_mode == 'both'
+    is_vertical_mirror = mirror_mode == 'vertical' or mirror_mode == 'both'
 
-# up, down, left, right
-directions = [
-    (0, 1),
-    (0, -1),
-    (-1, 0),
-    (1, 0),
-]
-directions_mirrored = [mirror_xy(x, y, 0, 0) for x, y in directions]
-assert len(set(directions_mirrored)) == 4
+    match mirror_mode:
+        case 'vertical': mirror_xy = mirror_xy_vertical
+        case 'horizontal': mirror_xy = mirror_xy_horizontal
+        case 'both': mirror_xy = mirror_xy_both
 
-# top-left, bottom-left, top-right, bottom-right
-walkable_flags = [
-    (-1, 1),
-    (-1, -1),
-    (1, 1),
-    (1, -1),
-]
-walkable_flags_mirrored = [mirror_xy(x, y, 0, 0) for x, y in walkable_flags]
-assert len(set(walkable_flags_mirrored)) == 4
+    # up, down, left, right
+    directions = [
+        (0, 1),
+        (0, -1),
+        (-1, 0),
+        (1, 0),
+    ]
+    directions_mirrored = [mirror_xy(x, y, 0, 0) for x, y in directions]
+    assert len(set(directions_mirrored)) == 4
+
+    # top-left, bottom-left, top-right, bottom-right
+    walkable_flags = [
+        (-1, 1),
+        (-1, -1),
+        (1, 1),
+        (1, -1),
+    ]
+    walkable_flags_mirrored = [mirror_xy(x, y, 0, 0) for x, y in walkable_flags]
+    assert len(set(walkable_flags_mirrored)) == 4
 
 
 def set_bit(val: int, index: int, x: int) -> int:
@@ -128,10 +131,6 @@ def mirror_screen(index: int) -> int:
     return to_index(x, y, screen_width)
 
 
-def mirror_screen_arr(arr: List[int]) -> List[int]:
-    return [mirror_screen(index) for index in arr]
-
-
 def mirror_pos(x: int, y: int) -> Tuple[int, int]:
     return mirror_xy(x, y, pos_width - 16, pos_height - 16)
 
@@ -163,87 +162,90 @@ def mirror_2d(arr: List[Any], w: int, h: int) -> List[Any]:
     return new_arr
 
 
-def is_null_combo(index: int):
-    if index >= len(reader.combos):
-        return True
+def mirror_qst(mirror_mode: str, in_path: str, out_path: str):
+    reader = ZeldaClassicReader(in_path)
+    reader.read_qst()
+    set_mirror_mode(mirror_mode)
 
-    tile = reader.combos[index].tile
-    if tile == 0:
-        return True
+    for zc_map in reader.maps:
+        zc_map.screens = mirror_2d(zc_map.screens, map_width, map_height)
 
-    if all(p == 0 for p in reader.tiles[tile].pixels):
-        return True
+        # Don't flip the 0x80 screens.
+        for screen in zc_map.screens[0:map_width * map_height]:
+            screen.data = mirror_2d(screen.data, screen_width, screen_height)
+            screen.cset = mirror_2d(screen.cset, screen_width, screen_height)
+            screen.sflag = mirror_2d(screen.sflag, screen_width, screen_height)
 
-    return False
+            udlr_flags = mirror_directional_array([
+                screen.flags2 & 1 != 0,
+                screen.flags2 & 2 != 0,
+                screen.flags2 & 4 != 0,
+                screen.flags2 & 8 != 0,
+            ])
+            flags2 = screen.flags2
+            for i, x in enumerate(udlr_flags):
+                flags2 = set_bit(flags2, i, x)
+            screen.flags2 = flags2
 
+            # TODO: mirror side_warp_index
+            if screen.side_warp_index != 0:
+                raise Exception('Only quests that use just A warps can be mirrored')
 
-for zc_map in reader.maps:
-    zc_map.screens = mirror_2d(zc_map.screens, map_width, map_height)
+            screen.side_warp_screen = mirror_1d(screen.side_warp_screen, map_width, map_height)
+            screen.tile_warp_screen = mirror_1d(screen.tile_warp_screen, map_width, map_height)
 
-    # Don't flip the 0x80 screens.
-    for screen in zc_map.screens[0:map_width * map_height]:
-        screen.data = mirror_2d(screen.data, screen_width, screen_height)
-        screen.cset = mirror_2d(screen.cset, screen_width, screen_height)
-        screen.sflag = mirror_2d(screen.sflag, screen_width, screen_height)
+            # top-left warp return squares have a special meaning for the test mode position
+            # selection–and is 99.99% not really being used. So don't touch it in that case.
+            if any(screen.warp_return_x) or any(screen.warp_return_y):
+                screen.warp_return_x, screen.warp_return_y = mirror_pos_arr(
+                    screen.warp_return_x, screen.warp_return_y)
 
-        udlr_flags = mirror_directional_array([
-            screen.flags2 & 1 != 0,
-            screen.flags2 & 2 != 0,
-            screen.flags2 & 4 != 0,
-            screen.flags2 & 8 != 0,
-        ])
-        flags2 = screen.flags2
-        for i, x in enumerate(udlr_flags):
-            flags2 = set_bit(flags2, i, x)
-        screen.flags2 = flags2
+            screen.item_x, screen.item_y = mirror_pos(screen.item_x, screen.item_y)
+            screen.stair_x, screen.stair_y = mirror_pos(screen.stair_x, screen.stair_y)
+            screen.warp_arrival_x, screen.warp_arrival_y = mirror_pos(
+                screen.warp_arrival_x, screen.warp_arrival_y)
+            if hasattr(screen, 'newitem_y'):
+                screen.newitem_x, screen.newitem_y = mirror_pos_arr(
+                    screen.newitem_x, screen.newitem_y)
 
-        # TODO: mirror side_warp_index
-        if screen.side_warp_index != 0:
-            raise Exception('Only quests that use just A warps can be mirrored')
+            screen.doors = mirror_directional_array(screen.doors)
+            screen.path = list(map(mirror_direction, screen.path))
+            screen.exit_dir = mirror_direction(screen.exit_dir)
 
-        screen.side_warp_screen = mirror_1d(screen.side_warp_screen, map_width, map_height)
-        screen.tile_warp_screen = mirror_1d(screen.tile_warp_screen, map_width, map_height)
+            if screen.next_screen:
+                screen.next_screen = mirror_screen(screen.next_screen)
 
-        # top-left warp return squares have a special meaning for the test mode position
-        # selection–and is 99.99% not really being used. So don't touch it in that case.
-        if any(screen.warp_return_x) or any(screen.warp_return_y):
-            screen.warp_return_x, screen.warp_return_y = mirror_pos_arr(
-                screen.warp_return_x, screen.warp_return_y)
+            if hasattr(screen, 'ff'):
+                for ff in screen.ff:
+                    if ff:
+                        ff.x, ff.y = mirror_pos(ff.x, ff.y)
 
-        screen.item_x, screen.item_y = mirror_pos(screen.item_x, screen.item_y)
-        screen.stair_x, screen.stair_y = mirror_pos(screen.stair_x, screen.stair_y)
-        screen.warp_arrival_x, screen.warp_arrival_y = mirror_pos(
-            screen.warp_arrival_x, screen.warp_arrival_y)
-        if hasattr(screen, 'newitem_y'):
-            screen.newitem_x, screen.newitem_y = mirror_pos_arr(screen.newitem_x, screen.newitem_y)
+    for i, combo in enumerate(reader.combos):
+        hor = combo.flip & 1 != 0
+        ver = combo.flip & 2 != 0
+        hor, ver = mirror_xy(hor, ver, 1, 1)
+        combo.flip = hor + (ver << 1)
 
-        screen.doors = mirror_directional_array(screen.doors)
-        screen.path = list(map(mirror_direction, screen.path))
-        screen.exit_dir = mirror_direction(screen.exit_dir)
+        combo.walk = mirror_walkable_flags(combo.walk)
 
-        if screen.next_screen:
-            screen.next_screen = mirror_screen(screen.next_screen)
+        if is_vertical_mirror:
+            # Can't trigger these warps on the top half... so make it 100% walkable.
+            type_name = combo_type_names[combo.type]
+            if 'Cave' in type_name:
+                combo.walk = 0
 
-        if hasattr(screen, 'ff'):
-            for ff in screen.ff:
-                if ff:
-                    ff.x, ff.y = mirror_pos(ff.x, ff.y)
+        # TODO: swap combo types like Conveyor Up <-> Conveyor Down
 
-for i, combo in enumerate(reader.combos):
-    hor = combo.flip & 1 != 0
-    ver = combo.flip & 2 != 0
-    hor, ver = mirror_xy(hor, ver, 1, 1)
-    combo.flip = hor + (ver << 1)
+    for door_set in reader.doors:
+        for door, offset, sw, sh in iterate_door_set(door_set):
+            mirror_doorset_grid(door, offset, sw, sh)
 
-    combo.walk = mirror_walkable_flags(combo.walk)
+        if is_vertical_mirror:
+            door_set.up, door_set.down = door_set.down, door_set.up
+        if is_horizontal_mirror:
+            door_set.left, door_set.right = door_set.right, door_set.left
 
-    if is_vertical_mirror:
-        # Can't trigger these warps on the top half... so make it 100% walkable.
-        type_name = combo_type_names[combo.type]
-        if 'Cave' in type_name:
-            combo.walk = 0
-
-    # TODO: swap combo types like Conveyor Up <-> Conveyor Down
+    reader.save_qst(out_path)
 
 
 def mirror_doorset_grid(door, door_offset, sw, sh):
@@ -270,20 +272,5 @@ def iterate_door_set(door_set):
         yield door_set.right, offset, sw, sh
 
 
-for door_set in reader.doors:
-    for door, offset, sw, sh in iterate_door_set(door_set):
-        mirror_doorset_grid(door, offset, sw, sh)
-
-    if is_vertical_mirror:
-        door_set.up, door_set.down = door_set.down, door_set.up
-    if is_horizontal_mirror:
-        door_set.left, door_set.right = door_set.right, door_set.left
-
-
-out_path = os.path.join(dir, '../output/1st-mirrored.qst')
-reader.save_qst(out_path)
-
-if mirror_mode == 'vertical':
-    hash = hashlib.md5(Path(out_path).read_bytes()).hexdigest()
-    if hash != '64aa751c28b1d38b59edf4ee5fbe952b':
-        raise Exception(f'hash has changed to {hash}')
+if __name__ == '__main__':
+    mirror_qst(*sys.argv[1:4])
