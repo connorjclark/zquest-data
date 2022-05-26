@@ -240,8 +240,7 @@ def mirror_qst(mirror_mode: str, in_path: str, out_path: str):
                 screen.next_screen = mirror_screen(screen.next_screen)
 
             if hasattr(screen, 'layer_screen'):
-                screen.layer_screen = [0 if scr == 0 else mirror_screen(
-                    scr) for scr in screen.layer_screen]
+                screen.layer_screen = [mirror_screen(scr) for scr in screen.layer_screen]
 
             if hasattr(screen, 'ff'):
                 for ff in screen.ff:
