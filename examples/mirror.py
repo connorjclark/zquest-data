@@ -164,11 +164,13 @@ def mirror_2d(arr: List[Any], w: int, h: int) -> List[Any]:
 
 def mirror_doorset_grid(door, door_offset, sw, sh):
     original_combos = door.combos.copy()
+    original_csets = door.csets.copy()
     for sx in range(sw):
         for sy in range(sh):
             door_index_1 = door_offset + to_index(sx, sy, sw)
             door_index_2 = door_offset + to_index(*mirror_xy(sx, sy, sw - 1, sh - 1), sw)
             door.combos[door_index_1] = original_combos[door_index_2]
+            door.csets[door_index_1] = original_csets[door_index_2]
 
 
 def iterate_door_set(door_set):
