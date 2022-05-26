@@ -162,6 +162,30 @@ def mirror_2d(arr: List[Any], w: int, h: int) -> List[Any]:
     return new_arr
 
 
+def mirror_doorset_grid(door, door_offset, sw, sh):
+    original_combos = door.combos.copy()
+    for sx in range(sw):
+        for sy in range(sh):
+            door_index_1 = door_offset + to_index(sx, sy, sw)
+            door_index_2 = door_offset + to_index(*mirror_xy(sx, sy, sw - 1, sh - 1), sw)
+            door.combos[door_index_1] = original_combos[door_index_2]
+
+
+def iterate_door_set(door_set):
+    for i in range(9):
+        sw = 2
+        sh = 2
+        offset = i * sw * sh
+        yield door_set.up, offset, sw, sh
+        yield door_set.down, offset, sw, sh
+
+        sw = 2
+        sh = 3
+        offset = i * sw * sh
+        yield door_set.left, offset, sw, sh
+        yield door_set.right, offset, sw, sh
+
+
 def mirror_qst(mirror_mode: str, in_path: str, out_path: str):
     reader = ZeldaClassicReader(in_path)
     reader.read_qst()
@@ -250,30 +274,6 @@ def mirror_qst(mirror_mode: str, in_path: str, out_path: str):
             door_set.left, door_set.right = door_set.right, door_set.left
 
     reader.save_qst(out_path)
-
-
-def mirror_doorset_grid(door, door_offset, sw, sh):
-    original_combos = door.combos.copy()
-    for sx in range(sw):
-        for sy in range(sh):
-            door_index_1 = door_offset + to_index(sx, sy, sw)
-            door_index_2 = door_offset + to_index(*mirror_xy(sx, sy, sw - 1, sh - 1), sw)
-            door.combos[door_index_1] = original_combos[door_index_2]
-
-
-def iterate_door_set(door_set):
-    for i in range(9):
-        sw = 2
-        sh = 2
-        offset = i * sw * sh
-        yield door_set.up, offset, sw, sh
-        yield door_set.down, offset, sw, sh
-
-        sw = 2
-        sh = 3
-        offset = i * sw * sh
-        yield door_set.left, offset, sw, sh
-        yield door_set.right, offset, sw, sh
 
 
 if __name__ == '__main__':
