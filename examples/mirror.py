@@ -25,11 +25,6 @@ pos_height = screen_height * 16
 map_width = 16
 map_height = 8
 
-USE_SCREEN_83 = True
-combos_to_not_modify = set()
-
-# TODO https://hoten.cc/zc/create/?quest=local/1st-mirrored.qst&map=2&screen=125
-
 
 def mirror_xy_vertical(x: int, y: int, w: int, h: int) -> Tuple[int, int]:
     return x, h - y
@@ -43,16 +38,14 @@ def mirror_xy_both(x: int, y: int, w: int, h: int) -> Tuple[int, int]:
     return w - x, h - y
 
 
-mirror_mode = 'vertical'
+mirror_mode = 'horizontal'
 match mirror_mode:
     case 'vertical': mirror_xy = mirror_xy_vertical
     case 'horizontal': mirror_xy = mirror_xy_horizontal
     case 'both': mirror_xy = mirror_xy_both
 
-
-def is_vertical_mirror():
-    return mirror_mode == 'vertical' or mirror_mode == 'both'
-
+is_horizontal_mirror = mirror_mode == 'horizontal' or mirror_mode == 'both'
+is_vertical_mirror = mirror_mode == 'vertical' or mirror_mode == 'both'
 
 # up, down, left, right
 directions = [
@@ -118,7 +111,7 @@ def mirror_walkable_flags(flags: int) -> int:
 
     # Combos that are only walkable on the top half look very strange when
     # made to be only walkable on the bottom half... so ignore those.
-    if is_vertical_mirror() and arr[0] and arr[2] and not arr[1] and not arr[3]:
+    if is_vertical_mirror and arr[0] and arr[2] and not arr[1] and not arr[3]:
         return flags
 
     arr = [
@@ -185,35 +178,10 @@ def is_null_combo(index: int):
 
 
 for zc_map in reader.maps:
-    # Screen 0x83 is the NES dungeon template screen, so let's use it
-    # to mirror matching screen combos.
-    tile_mappings = {}
-
-    if USE_SCREEN_83:
-        screen_83 = zc_map.screens[0x83]
-        for x in range(screen_width):
-            for y in range(screen_height):
-                new_x, new_y = mirror_xy(x, y, screen_width - 1, screen_height - 1)
-                index_1 = to_index(x, y, screen_width)
-                index_2 = to_index(new_x, new_y, screen_width)
-                if is_null_combo(screen_83.data[index_1]) or is_null_combo(screen_83.data[index_2]):
-                    continue
-
-                tile_mappings[screen_83.data[index_1]] = screen_83.data[index_2]
-                combos_to_not_modify.add(screen_83.data[index_1])
-
     zc_map.screens = mirror_2d(zc_map.screens, map_width, map_height)
 
     # Don't flip the 0x80 screens.
     for screen in zc_map.screens[0:map_width * map_height]:
-        original_data = screen.data.copy()
-        for x in range(screen_width):
-            for y in range(screen_height):
-                index = to_index(x, y, screen_width)
-                to_value = tile_mappings.get(original_data[index])
-                if to_value != None:
-                    screen.data[index] = to_value
-
         screen.data = mirror_2d(screen.data, screen_width, screen_height)
         screen.cset = mirror_2d(screen.cset, screen_width, screen_height)
         screen.sflag = mirror_2d(screen.sflag, screen_width, screen_height)
@@ -262,9 +230,6 @@ for zc_map in reader.maps:
                     ff.x, ff.y = mirror_pos(ff.x, ff.y)
 
 for i, combo in enumerate(reader.combos):
-    if i in combos_to_not_modify:
-        continue
-
     hor = combo.flip & 1 != 0
     ver = combo.flip & 2 != 0
     hor, ver = mirror_xy(hor, ver, 1, 1)
@@ -272,7 +237,7 @@ for i, combo in enumerate(reader.combos):
 
     combo.walk = mirror_walkable_flags(combo.walk)
 
-    if is_vertical_mirror():
+    if is_vertical_mirror:
         # Can't trigger these warps on the top half... so make it 100% walkable.
         type_name = combo_type_names[combo.type]
         if 'Cave' in type_name:
@@ -280,9 +245,45 @@ for i, combo in enumerate(reader.combos):
 
     # TODO: swap combo types like Conveyor Up <-> Conveyor Down
 
+
+def mirror_doorset_grid(door, door_offset, sw, sh):
+    original_combos = door.combos.copy()
+    for sx in range(sw):
+        for sy in range(sh):
+            door_index_1 = door_offset + to_index(sx, sy, sw)
+            door_index_2 = door_offset + to_index(*mirror_xy(sx, sy, sw - 1, sh - 1), sw)
+            door.combos[door_index_1] = original_combos[door_index_2]
+
+
+def iterate_door_set(door_set):
+    for i in range(9):
+        sw = 2
+        sh = 2
+        offset = i * sw * sh
+        yield door_set.up, offset, sw, sh
+        yield door_set.down, offset, sw, sh
+
+        sw = 2
+        sh = 3
+        offset = i * sw * sh
+        yield door_set.left, offset, sw, sh
+        yield door_set.right, offset, sw, sh
+
+
+for door_set in reader.doors:
+    for door, offset, sw, sh in iterate_door_set(door_set):
+        mirror_doorset_grid(door, offset, sw, sh)
+
+    if is_vertical_mirror:
+        door_set.up, door_set.down = door_set.down, door_set.up
+    if is_horizontal_mirror:
+        door_set.left, door_set.right = door_set.right, door_set.left
+
+
 out_path = os.path.join(dir, '../output/1st-mirrored.qst')
 reader.save_qst(out_path)
 
-hash = hashlib.md5(Path(out_path).read_bytes()).hexdigest()
-if hash != 'da49655ba43d28cdafebfb390319b1e4':
-    raise Exception(f'hash has changed to {hash}')
+if mirror_mode == 'vertical':
+    hash = hashlib.md5(Path(out_path).read_bytes()).hexdigest()
+    if hash != '64aa751c28b1d38b59edf4ee5fbe952b':
+        raise Exception(f'hash has changed to {hash}')
