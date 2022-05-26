@@ -127,8 +127,8 @@ def mirror_walkable_flags(flags: int) -> int:
 
 
 def mirror_screen(index: int) -> int:
-    x, y = mirror_xy(*to_xy(index, screen_width), screen_width - 1, screen_height - 1)
-    return to_index(x, y, screen_width)
+    x, y = mirror_xy(*to_xy(index, screen_width), map_width - 1, map_height - 1)
+    return to_index(x, y, map_width)
 
 
 def mirror_pos(x: int, y: int) -> Tuple[int, int]:
@@ -212,8 +212,12 @@ def mirror_qst(mirror_mode: str, in_path: str, out_path: str):
             screen.path = list(map(mirror_direction, screen.path))
             screen.exit_dir = mirror_direction(screen.exit_dir)
 
-            if screen.next_screen:
+            if hasattr(screen, 'next_screen'):
                 screen.next_screen = mirror_screen(screen.next_screen)
+
+            if hasattr(screen, 'layer_screen'):
+                screen.layer_screen = [0 if scr == 0 else mirror_screen(
+                    scr) for scr in screen.layer_screen]
 
             if hasattr(screen, 'ff'):
                 for ff in screen.ff:
