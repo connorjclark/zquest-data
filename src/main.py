@@ -1,4 +1,5 @@
 import argparse
+import logging
 import os
 import struct
 from PIL import Image
@@ -14,7 +15,13 @@ parser.add_argument('--cset', type=int, default=-1,
                     help='cset to use for --save-tiles. Set to -1 to save as raw index values')
 parser.add_argument('--save-csets', action='store_true',
                     help='extracts csets as GPL files (ex: for use in Aseprite) and saves to output folder')
+parser.add_argument('-log',
+                    '--loglevel',
+                    default='warning',
+                    help='Provide logging level. Example --loglevel debug, default=warning')
 options = parser.parse_args()
+
+logging.basicConfig(level=options.loglevel.upper())
 
 
 def save_midi_file(midi, path):

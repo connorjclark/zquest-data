@@ -1,4 +1,5 @@
 import io
+import logging
 import os
 import re
 import tempfile
@@ -52,7 +53,7 @@ class ZeldaClassicReader:
 
         outpath = 'output/decoded.data'
         os.makedirs('output', exist_ok=True)
-        (err, key) = py_decode(self.path, outpath)
+        err, key = py_decode(self.path, outpath)
         # Only bother with the stupid key (which we can set to be anything)
         # so the _exact_ same bytes can be written back and verify reading and
         # writing works without error.
@@ -92,8 +93,8 @@ class ZeldaClassicReader:
         self.section_fields[SECTION_IDS.HEADER] = fields
 
         self.version = Version(self.header.zelda_version, self.header.build)
-        print(self.version)
-        print(self.header.title)
+        logging.debug(self.version)
+        logging.debug(self.header.title)
 
     def read_section_header(self):
         id = self.b.read(4)
@@ -111,7 +112,7 @@ class ZeldaClassicReader:
 
         # Sometimes there is garbage data between sections.
         if not re.match("\w{3,4}", id.decode("ascii", errors="ignore")):
-            print(f"garbage section id: {id}, skipping ahead some bytes...")
+            logging.warning(f"garbage section id: {id}, skipping ahead some bytes...")
             while id not in vars(SECTION_IDS).values():
                 self.b.advance(-12 + 1)
                 id, section_version, section_cversion = self.read_section_header()
@@ -134,28 +135,30 @@ class ZeldaClassicReader:
         }
 
         if size > self.b.length - self.b.bytes_read():
-            print('section size is bigger than rest of data, clamping')
+            logging.warning('section size is bigger than rest of data, clamping')
             size = self.b.length - self.b.bytes_read()
 
         self.section_lengths[id] = size
         section_bytes = Bytes(io.BytesIO(self.b.read(size)))
         if id in sections:
-            print(f'{id} {section_version}\t{section_cversion}\t{size}')
+            logging.debug(f'{id} {section_version}\t{section_cversion}\t{size}')
 
             try:
                 sections[id](section_bytes, section_version, section_cversion)
             except Exception as e:
-                error = "".join(
-                    traceback.TracebackException.from_exception(e).format())
-                print(error)
+                error = "".join(traceback.TracebackException.from_exception(e).format())
+                logging.error(error)
                 self.errors.append(error)
 
             remaining = size - section_bytes.bytes_read()
             if remaining != 0:
-                print(
-                    'section did not consume expected number of bytes. remaining:', remaining)
+                ok = False
+                logging.warning(
+                    '%r section did not consume expected number of bytes. remaining: %r', id, remaining)
+
+            self.section_ok[id] = ok
         else:
-            print('unhandled section', id, size)
+            logging.debug('unhandled section %r %r', id, size)
             pass
 
     def read_gpak(self, section_version, section_cversion):
