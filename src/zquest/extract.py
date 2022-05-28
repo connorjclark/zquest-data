@@ -284,33 +284,10 @@ class ZeldaClassicReader:
         self.section_fields[SECTION_IDS.GUYS] = fields
 
     def read_weapons(self, section_bytes, section_version, section_cversion):
-        weapons = []
-
-        if section_version > 2:
-            num_weapons = section_bytes.read_int()
-            for _ in range(num_weapons):
-                weapon = {}
-                weapon['name'] = section_bytes.read_str(64)
-                weapons.append(weapon)
-
-                if section_version < 5:
-                    raise 'TODO'
-
-            for i in range(num_weapons):
-                weapon = weapons[i]
-                weapon['tile'] = section_bytes.read_int()
-                weapon['misc'] = section_bytes.read_byte()
-                weapon['csets'] = section_bytes.read_byte()
-                weapon['frames'] = section_bytes.read_byte()
-                weapon['speed'] = section_bytes.read_byte()
-                weapon['type'] = section_bytes.read_byte()
-                if section_version >= 7:
-                    weapon['script'] = section_bytes.read_int()
-                    weapon['newtile'] = section_bytes.read_long()
-        else:
-            raise 'TODO'
-
-        self.weapons = weapons
+        data, fields = read_section(section_bytes, SECTION_IDS.WEAPONS,
+                                    self.version, section_version)
+        self.weapons = data
+        self.section_fields[SECTION_IDS.WEAPONS] = fields
 
     def read_link_sprites(self, section_bytes, section_version, section_cversion):
         data, fields = read_section(section_bytes, SECTION_IDS.LINKSPRITES,
