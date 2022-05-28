@@ -18,10 +18,16 @@ def get_wpn_field(version: Version, sversion: int) -> F:
         'speed': 'B',
         'type': 'B',
         'script': 'H' if sversion >= 7 else None,
-        'newtile': 'I' if sversion >= 7 else None,
+        'new_tile': 'I' if sversion >= 7 else None,
     })
 
+    if sversion > 2:
+        names_len = num_weapons
+        def weapons_len(data): return len(data['names'])
+    else:
+        weapons_len = num_weapons
+
     return F(type='object', fields={
-        'names': F(arr_len=num_weapons, type='64s') if sversion > 2 else None,
-        'weapons': F(type='array', arr_len=lambda data: len(data['names']), field=weapon_field),
+        'names': F(arr_len=names_len, type='64s') if sversion > 2 else None,
+        'weapons': F(type='array', arr_len=weapons_len, field=weapon_field),
     })
