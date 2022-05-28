@@ -3,10 +3,29 @@ from ..version import Version
 
 
 def get_hdr_field(version: Version, sversion: int) -> F:
-    # pre-1.93 version
+    # pre-1.93
     is_old_version = version.preamble == b'AG Zelda Classic Quest File\n '
     if is_old_version:
-        raise Exception('TODO: version is too old')
+        return F(type='object', fields={
+            'padding': 'B',
+            'zelda_version': 'H',
+            'internal': 'H',
+            'quest_number': 'B',
+            'quest_rule_0': 'B',
+            'quest_rule_1': 'B',
+            'map_count': 'B',
+            'old_str_count': 'B',
+            'zq_tiles': 'B',
+            'midi_flags': F(type='bytes', arr_len=4),
+            'cheats_2': 'B',
+            'dummy': '14s',
+            'quest_rule_2': 'B',
+            'quest_rule_3': 'B',
+            'dummy_2': 'B',
+            'version': '9s',
+            'title': '65s',
+            'author': '65s',
+        })
 
     templatepath_len = 2048
     if sversion == 1:
@@ -16,7 +35,7 @@ def get_hdr_field(version: Version, sversion: int) -> F:
         'zelda_version': 'H',
         'build': 'B',
         'pw_hash': F(type='bytes', arr_len=16) if sversion >= 3 else None,
-        'pwd': F(type='bytes', arr_len=30) if sversion < 3 else None, # oh lordy
+        'pwd': F(type='bytes', arr_len=30) if sversion < 3 else None,  # oh lordy
         'pwd_key': F(type='H') if sversion < 3 else None,
         'internal': 'H',
         'quest_number': 'B',

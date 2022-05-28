@@ -67,12 +67,21 @@ class ZeldaClassicReader:
 
         self.preamble = self.b.read(29)
         preambles = [
-          b'AG Zelda Classic Quest File\n ',
-          b'AG ZC Enhanced Quest File\n   ',
-          b'Zelda Classic Quest File     ',
+            b'AG Zelda Classic Quest File\n ',
+            b'AG ZC Enhanced Quest File\n   ',
+            b'Zelda Classic Quest File     ',
         ]
         if self.preamble not in preambles:
             raise Exception(f'unexpected preamble: {self.preamble}')
+
+        if self.preamble == preambles[0]:
+            # Really old qst files use a crappy format.
+            # https://github.com/ArmageddonGames/ZeldaClassic/blob/2.55-master/src/qst.cpp#L20934
+            self.read_header(self.b, None, None)
+            # TODO: probably won't ever bother reading quests this old
+            logging.warning(
+                'qst file is pre-1.93, and is too old to read more than the header section')
+            return
 
         # Skip ahead to the beginning of the HDR section.
         header_start = decoded.find(b'HDR ')
@@ -97,11 +106,15 @@ class ZeldaClassicReader:
     # zdefs.h
 
     def read_header(self, section_bytes, section_version, section_cversion):
-        data, fields = read_section(section_bytes, SECTION_IDS.HEADER, Version(None, None, self.preamble), section_version)
+        data, fields = read_section(section_bytes, SECTION_IDS.HEADER,
+                                    Version(None, None, self.preamble), section_version)
         self.header = data
         self.section_fields[SECTION_IDS.HEADER] = fields
 
-        self.version = Version(self.header.zelda_version, self.header.build)
+        if hasattr(self.header, 'build'):
+            self.version = Version(self.header.zelda_version, self.header.build)
+        else:
+            self.version = Version(self.header.zelda_version)
         logging.debug(self.version)
         logging.debug(self.header.title)
 
