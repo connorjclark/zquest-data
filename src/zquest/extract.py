@@ -75,7 +75,7 @@ class ZeldaClassicReader:
             raise Exception(f'unexpected preamble: {self.preamble}')
 
         # Skip ahead to the beginning of the HDR section.
-        header_start = decoded.find(b'HDR')
+        header_start = decoded.find(b'HDR ')
         if header_start == -1:
             raise Exception('could not find HDR section')
         self.b.f.seek(header_start)
