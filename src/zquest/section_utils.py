@@ -15,6 +15,7 @@ from .sections.door import get_door_field
 from .sections.hdr import get_hdr_field
 from .sections.item import get_item_field
 from .sections.midi import get_midi_field
+from .sections.guy import get_guy_field
 from .version import Version
 
 if TYPE_CHECKING:
@@ -163,6 +164,7 @@ def serialize(reader: ZeldaClassicReader) -> bytearray:
         SECTION_IDS.DOORS,
         SECTION_IDS.ITEMS,
         SECTION_IDS.MIDIS,
+        SECTION_IDS.GUYS,
     ]
     # Modify in the same order sections were found in the original file,
     # to avoid messing up the offsets of unprocessed sections.
@@ -204,6 +206,8 @@ def serialize_section(reader: ZeldaClassicReader, id: bytes) -> bytes:
             write_field(bytes, reader.items, reader.section_fields[id])
         case SECTION_IDS.MIDIS:
             write_field(bytes, reader.midis, reader.section_fields[id])
+        case SECTION_IDS.GUYS:
+            write_field(bytes, reader.guys, reader.section_fields[id])
         case _:
             raise Exception(f'unexpected id {id}')
 
@@ -295,6 +299,8 @@ def get_section_field(id: bytes, version: Version, sversion: int) -> F:
             field = get_item_field(version, sversion)
         case SECTION_IDS.MIDIS:
             field = get_midi_field(version, sversion)
+        case SECTION_IDS.GUYS:
+            field = get_guy_field(version, sversion)
         case _:
             raise Exception(f'unexpected id {id}')
 
