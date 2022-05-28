@@ -21,6 +21,7 @@
 #define ENC_METHOD_MAX 5
 
 static int32_t seed = 0;
+static int32_t method_out = 0;
 static int32_t key_out = 0;
 static int32_t enc_mask[ENC_METHOD_MAX] = {0x4C358938, 0x91B2A2D1, 0x4A7C1B87, 0xF93941E6, 0xFD095E94};
 static int32_t pvalue[ENC_METHOD_MAX] = {0x62E9, 0x7D14, 0x1A82, 0x02BB, 0xE09C};
@@ -228,6 +229,7 @@ int decode(const char* qstpath, const char* outpath) {
     int result = try_decode(qstpath, outpath, method);
     if (result == 0) {
       // All good!
+      method_out = method;
       return 0;
     }
 
@@ -243,11 +245,15 @@ int decode(const char* qstpath, const char* outpath) {
   return -1;
 }
 
+int get_decoded_method() {
+  return method_out;
+}
+
 int get_decoded_key() {
   return key_out;
 }
 
-int encode(const char* inputpath, const char* outpath, int key) {
+int encode(const char* inputpath, const char* outpath, int method, int key) {
   PACKFILE *pf = pack_fopen_password("/tmp/qst.compressed", F_WRITE_PACKED, datapwd);
 
   FILE *f = fopen(inputpath, "rb");
@@ -258,5 +264,5 @@ int encode(const char* inputpath, const char* outpath, int key) {
   fclose(f);
   pack_fclose(pf);
 
-  return encode_file_007("/tmp/qst.compressed", outpath, key, "Zelda Classic Quest File", ENC_METHOD_MAX - 1);
+  return encode_file_007("/tmp/qst.compressed", outpath, key, "Zelda Classic Quest File", method);
 }

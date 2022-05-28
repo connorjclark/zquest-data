@@ -49,10 +49,11 @@ class ZeldaClassicReader:
 
         outpath = 'output/decoded.data'
         os.makedirs('output', exist_ok=True)
-        err, key = py_decode(self.path, outpath)
-        # Only bother with the stupid key (which we can set to be anything)
+        err, method, key = py_decode(self.path, outpath)
+        # Only bother with the method or stupid key (which we can set to be anything)
         # so the _exact_ same bytes can be written back and verify reading and
         # writing works without error.
+        self.method = method
         self.key = key
         if err != 0:
             raise Exception(f'error decoding: {err}')
@@ -285,7 +286,7 @@ class ZeldaClassicReader:
     def save_qst(self, qst_path):
         with tempfile.NamedTemporaryFile() as tmp:
             tmp.write(serialize(self))
-            err = py_encode(tmp.name, qst_path, self.key)
+            err = py_encode(tmp.name, qst_path, self.method, self.key)
             if err != 0:
                 raise Exception(f'error encoding: {err}')
 
