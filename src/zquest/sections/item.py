@@ -3,9 +3,6 @@ from ..version import Version
 
 
 def get_item_field(version: Version, sversion: int) -> F:
-    if sversion <= 1:
-        raise Exception(f'item section is too old')
-
     if version.zelda_version > 0x192:
         num_items = 'H'
     elif version.zelda_version < 0x186:
@@ -114,7 +111,13 @@ def get_item_field(version: Version, sversion: int) -> F:
         'pickup_flag': 'B' if sversion >= 48 else None,
     })
 
+    if sversion > 1:
+        names_len = num_items
+        def items_len(data): return len(data['names'])
+    else:
+        items_len = num_items
+
     return F(type='object', fields={
-        'names': F(arr_len=num_items, type='64s') if sversion > 1 else None,
-        'items': F(type='array', arr_len=lambda data: len(data['names']), field=item_field),
+        'names': F(arr_len=names_len, type='64s') if sversion > 1 else None,
+        'items': F(type='array', arr_len=items_len, field=item_field),
     })
