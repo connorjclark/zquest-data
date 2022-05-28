@@ -35,6 +35,7 @@ class ZeldaClassicReader:
         self.link_sprites = None
         self.items = None
         self.midis = None
+        self.rules = None
 
     # https://github.com/ArmageddonGames/ZeldaClassic/blob/30c9e17409304390527fcf84f75226826b46b819/src/zq_class.cpp#L11817
 
@@ -129,6 +130,7 @@ class ZeldaClassicReader:
             SECTION_IDS.ITEMS: self.read_items,
             SECTION_IDS.MIDIS: self.read_midis,
             SECTION_IDS.DOORS: self.read_doors,
+            SECTION_IDS.RULES: self.read_rules,
         }
 
         if size > self.b.length - self.b.bytes_read():
@@ -262,6 +264,11 @@ class ZeldaClassicReader:
         self.doors = data
         self.section_fields[SECTION_IDS.DOORS] = fields
 
+    def read_rules(self, section_bytes, section_version, section_cversion):
+        data, fields = read_section(section_bytes, SECTION_IDS.RULES, self.version, section_version)
+        self.rules = data
+        self.section_fields[SECTION_IDS.RULES] = fields
+
     def save_qst(self, qst_path):
         with tempfile.NamedTemporaryFile() as tmp:
             tmp.write(serialize(self))
@@ -282,5 +289,6 @@ class ZeldaClassicReader:
             'link_sprites': self.link_sprites,
             'items': self.items,
             'midis': self.midis,
+            'rules': self.rules,
         }
         return pretty_json_format(data)
