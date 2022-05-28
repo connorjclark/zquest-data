@@ -1,11 +1,17 @@
 import context
-from zquest.field import F
+import argparse
 
 from zquest.section_utils import SECTION_IDS, get_section_field
 from zquest.version import Version
 
 positive_infinity = float('inf')
-version = Version(zelda_version=positive_infinity, build=positive_infinity)
+
+parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+parser.add_argument('--version', type=lambda x: int(x, 16), default=positive_infinity)
+parser.add_argument('--build', type=int, default=positive_infinity)
+args = parser.parse_args()
+
+version = Version(zelda_version=args.version, build=args.build)
 
 for id in vars(SECTION_IDS).values():
     try:
