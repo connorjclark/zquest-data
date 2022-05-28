@@ -313,38 +313,10 @@ class ZeldaClassicReader:
         self.weapons = weapons
 
     def read_link_sprites(self, section_bytes, section_version, section_cversion):
-        if section_version >= 6:
-            raise 'TODO'
-
-        walk = []
-        for _ in range(4):
-            walk.append({
-                'tile': section_bytes.read_int(),
-                'flip': section_bytes.read_byte(),
-                'extend': section_bytes.read_byte(),
-            })
-
-        stab = []
-        for _ in range(4):
-            stab.append({
-                'tile': section_bytes.read_int(),
-                'flip': section_bytes.read_byte(),
-                'extend': section_bytes.read_byte(),
-            })
-
-        slash = []
-        for _ in range(4):
-            slash.append({
-                'tile': section_bytes.read_int(),
-                'flip': section_bytes.read_byte(),
-                'extend': section_bytes.read_byte(),
-            })
-
-        self.link_sprites = {
-            'walk': walk,
-            'stab': stab,
-            'slash': slash
-        }
+        data, fields = read_section(section_bytes, SECTION_IDS.LINKSPRITES,
+                                    self.version, section_version)
+        self.link_sprites = data
+        self.section_fields[SECTION_IDS.LINKSPRITES] = fields
 
     def read_items(self, section_bytes, section_version, section_cversion):
         data, fields = read_section(section_bytes, SECTION_IDS.ITEMS, self.version, section_version)

@@ -16,6 +16,7 @@ from .sections.hdr import get_hdr_field
 from .sections.item import get_item_field
 from .sections.midi import get_midi_field
 from .sections.guy import get_guy_field
+from .sections.link import get_link_field
 from .version import Version
 
 if TYPE_CHECKING:
@@ -165,6 +166,7 @@ def serialize(reader: ZeldaClassicReader) -> bytearray:
         SECTION_IDS.ITEMS,
         SECTION_IDS.MIDIS,
         SECTION_IDS.GUYS,
+        SECTION_IDS.LINKSPRITES,
     ]
     # Modify in the same order sections were found in the original file,
     # to avoid messing up the offsets of unprocessed sections.
@@ -208,6 +210,8 @@ def serialize_section(reader: ZeldaClassicReader, id: bytes) -> bytes:
             write_field(bytes, reader.midis, reader.section_fields[id])
         case SECTION_IDS.GUYS:
             write_field(bytes, reader.guys, reader.section_fields[id])
+        case SECTION_IDS.LINKSPRITES:
+            write_field(bytes, reader.link_sprites, reader.section_fields[id])
         case _:
             raise Exception(f'unexpected id {id}')
 
@@ -254,7 +258,11 @@ def read_section(bytes: Bytes, id: bytes, version: Version, sversion: int) -> Tu
     return read_field(bytes, field), field
 
 
-def validate_field(field: F):
+def validate_field(field: F, seen=[]):
+    if field in seen:
+        return
+
+    seen.append(field)
     match field.type:
         case 'array':
             validate_field(field.field)
@@ -301,6 +309,8 @@ def get_section_field(id: bytes, version: Version, sversion: int) -> F:
             field = get_midi_field(version, sversion)
         case SECTION_IDS.GUYS:
             field = get_guy_field(version, sversion)
+        case SECTION_IDS.LINKSPRITES:
+            field = get_link_field(version, sversion)
         case _:
             raise Exception(f'unexpected id {id}')
 
