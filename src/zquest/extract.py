@@ -47,13 +47,6 @@ class ZeldaClassicReader:
         # read the header and decompress the data
         # https://github.com/ArmageddonGames/ZeldaClassic/blob/023dd17eaf6a969f47650cb6591cedd0baeaab64/src/zsys.cpp#L676
 
-        # preambles = [
-        #   b'AG Zelda Classic Quest File',
-        #   b'AG ZC Enhanced Quest File',
-        #   b'Zelda Classic Quest File',
-        # ]
-        # assert_equal(preamble, self.b.read(len(preamble)))
-
         outpath = 'output/decoded.data'
         os.makedirs('output', exist_ok=True)
         err, key = py_decode(self.path, outpath)
@@ -68,13 +61,25 @@ class ZeldaClassicReader:
             decoded = f.read()
 
         # remake the byte reader with the decoded data
+        self.b.f.close()
+        self.b = Bytes(io.BytesIO(decoded))
+
+        self.preamble = self.b.read(29)
+        preambles = [
+          b'AG Zelda Classic Quest File\n ',
+          b'AG ZC Enhanced Quest File\n   ',
+          b'Zelda Classic Quest File     ',
+        ]
+        if self.preamble not in preambles:
+            raise Exception(f'unexpected preamble: {self.preamble}')
+
+        # Skip ahead to the beginning of the HDR section.
         header_start = decoded.find(b'HDR')
         if header_start == -1:
             raise Exception('could not find HDR section')
-        self.b = Bytes(io.BytesIO(decoded))
         self.b.f.seek(header_start)
 
-        # actually read the file now
+        # actually read the data now
         while self.b.has_bytes():
             self.read_section()
 
@@ -91,7 +96,7 @@ class ZeldaClassicReader:
     # zdefs.h
 
     def read_header(self, section_bytes, section_version, section_cversion):
-        data, fields = read_section(section_bytes, SECTION_IDS.HEADER, None, section_version)
+        data, fields = read_section(section_bytes, SECTION_IDS.HEADER, Version(None, None, self.preamble), section_version)
         self.header = data
         self.section_fields[SECTION_IDS.HEADER] = fields
 
@@ -287,6 +292,7 @@ class ZeldaClassicReader:
     def to_json(self):
         data = {
             'errors': self.errors,
+            'header': self.header,
             'combos': self.combos,
             'tiles': self.tiles,
             'csets': self.csets,

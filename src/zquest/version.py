@@ -1,7 +1,9 @@
 class Version:
-    def __init__(self, zelda_version=None, build=None):
+    def __init__(self, zelda_version=None, build=None, preamble=None):
         self.zelda_version = zelda_version
         self.build = build
+        # Not part of any comparisons.
+        self.preamble = preamble
 
     def __str__(self):
         parts = []
