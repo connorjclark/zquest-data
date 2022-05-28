@@ -296,7 +296,6 @@ def validate_field(field: F, seen=[]):
                 raise Exception(f'invalid field type: {field.type}')
 
 
-# TODO: move all section reading to this new function
 def get_section_field(id: bytes, version: Version, sversion: int) -> F:
     match id:
         case SECTION_IDS.HEADER:

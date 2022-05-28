@@ -15,28 +15,6 @@ def assert_equal(expected, actual):
         raise Exception(f'expected {expected} but got {actual}')
 
 
-def read_data(dest, section_version, descriptors):
-    """TODO: deprecated, remove."""
-
-    for key, read in descriptors.items():
-        if key in dest:
-            raise f'already using key: {key}'
-
-        value = None
-        if isinstance(read, dict):
-            for version_threshold, read_option in read.items():
-                if section_version >= version_threshold:
-                    value = read_option()
-                    if isinstance(value, tuple):
-                        value = value[0]
-                    break
-        else:
-            value = read()
-
-        if value is not None:
-            dest[key] = value
-
-
 class ZeldaClassicReader:
     def __init__(self, path):
         self.b = Bytes(open(path))
@@ -175,14 +153,8 @@ class ZeldaClassicReader:
                 print(
                     'section did not consume expected number of bytes. remaining:', remaining)
         else:
-            # print('unknown section', id, size)
+            print('unhandled section', id, size)
             pass
-
-    # https://github.com/ArmageddonGames/ZeldaClassic/blob/30c9e17409304390527fcf84f75226826b46b819/src/zdefs.h#L1370
-    # def tfbit_bits(self, tfbit):
-    #   print(tfbit)
-    #   sizes = [-1, 4, 8, 16, 24, 32, -1]
-    #   return sizes[tfbit]
 
     def read_gpak(self, section_version, section_cversion):
         pass
