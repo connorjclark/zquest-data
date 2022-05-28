@@ -68,15 +68,12 @@ if __name__ == "__main__":
 
     # Save Pallete files (for aseprite).
     if options.save_csets:
-        cset_colors = reader.csets['cset_colors']
-        for i in range(len(cset_colors)):
-            colors = cset_colors[i]
+        for i, colors in enumerate(reader.cset_colors):
             if all(r + g + b == 0 for (r, g, b, a) in colors):
                 break
 
-            gpl_text = 'GIMP Palette\nChannels: RGBA\n#\n' + \
-                '\n'.join(
-                    [f'{r} {g} {b} {a} Untitled' for (r, g, b, a) in colors])
+            gpl_text = 'GIMP Palette\nChannels: RGBA\n#\n' + '\n'.join(
+                [f'{r} {g} {b} {a} Untitled' for (r, g, b, a) in colors])
             with open(f'output/cset-{i}.gpl', 'w') as file:
                 file.write(gpl_text)
 
@@ -94,7 +91,7 @@ if __name__ == "__main__":
             colors = [(0, 0, i) for i in range(16)]
             colors[0] = (0, 0, 0, 0)
         else:
-            colors = reader.csets['cset_colors'][options.cset]
+            colors = reader.cset_colors[options.cset]
 
         while tile_index < len(reader.tiles):
             img = Image.new('RGBA', (tiles_per_row * sprite_size, rows_per_page * sprite_size))
@@ -111,7 +108,7 @@ if __name__ == "__main__":
                 for tx in range(sprite_size):
                     for ty in range(sprite_size):
                         tile_offset = tx + ty * sprite_size
-                        cset_offset = tile['pixels'][tile_offset]  # 0-15
+                        cset_offset = tile.pixels[tile_offset]  # 0-15
                         x = spritesheet_x + tx
                         y = spritesheet_y + ty
                         pixels[x, y] = colors[cset_offset]

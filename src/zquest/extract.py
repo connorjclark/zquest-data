@@ -221,27 +221,12 @@ class ZeldaClassicReader:
 
     # https://github.com/ArmageddonGames/ZeldaClassic/blob/bdac8e682ac1eda23d775dacc5e5e34b237b82c0/src/qst.cpp#L15411
     def read_csets(self, section_bytes, section_version, section_cversion):
-        # https://github.com/ArmageddonGames/ZeldaClassic/blob/0fddc19a02ccf62c468d9201dd54dcb834b764ca/src/colors.h#L47
-        newerpsTOTAL = (6701 << 4)*3
-        MAXLEVELS = 512
-        PALNAMESIZE = 17
+        data, fields = read_section(section_bytes, SECTION_IDS.CSETS,
+                                    self.version, section_version)
+        self.csets = data
+        self.section_fields[SECTION_IDS.CSETS] = fields
 
-        color_data = section_bytes.read_array(1, newerpsTOTAL)
-
-        palnames = []
-        for _ in range(MAXLEVELS):
-            palnames.append(section_bytes.read_str(PALNAMESIZE))
-
-        palcycles = section_bytes.read_int()
-
-        cycles = []
-        for _ in range(palcycles):
-            cycles.append({
-                'first': section_bytes.read_array(1, 3),
-                'count': section_bytes.read_array(1, 3),
-                'speed': section_bytes.read_array(1, 3),
-            })
-
+        color_data = self.csets.color_data
         i = 0
         cset_colors = []
         while i < len(color_data):
@@ -261,12 +246,7 @@ class ZeldaClassicReader:
 
             cset_colors.append(colors)
 
-        self.csets = {
-            'color_data': color_data,
-            'palnames': palnames,
-            'cycles': cycles,
-            'cset_colors': cset_colors,
-        }
+        self.cset_colors = cset_colors
 
     def read_dmaps(self, section_bytes, section_version, section_cversion):
         data, fields = read_section(section_bytes, SECTION_IDS.DMAPS, self.version, section_version)

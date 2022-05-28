@@ -18,6 +18,7 @@ from .sections.midi import get_midi_field
 from .sections.guy import get_guy_field
 from .sections.link import get_link_field
 from .sections.wpn import get_wpn_field
+from .sections.cset import get_cset_field
 from .version import Version
 
 if TYPE_CHECKING:
@@ -169,6 +170,7 @@ def serialize(reader: ZeldaClassicReader) -> bytearray:
         SECTION_IDS.GUYS,
         SECTION_IDS.LINKSPRITES,
         SECTION_IDS.WEAPONS,
+        SECTION_IDS.CSETS,
     ]
     # Modify in the same order sections were found in the original file,
     # to avoid messing up the offsets of unprocessed sections.
@@ -216,6 +218,8 @@ def serialize_section(reader: ZeldaClassicReader, id: bytes) -> bytes:
             write_field(bytes, reader.link_sprites, reader.section_fields[id])
         case SECTION_IDS.WEAPONS:
             write_field(bytes, reader.weapons, reader.section_fields[id])
+        case SECTION_IDS.CSETS:
+            write_field(bytes, reader.csets, reader.section_fields[id])
         case _:
             raise Exception(f'unexpected id {id}')
 
@@ -317,6 +321,8 @@ def get_section_field(id: bytes, version: Version, sversion: int) -> F:
             field = get_link_field(version, sversion)
         case SECTION_IDS.WEAPONS:
             field = get_wpn_field(version, sversion)
+        case SECTION_IDS.CSETS:
+            field = get_cset_field(version, sversion)
         case _:
             raise Exception(f'unexpected id {id}')
 
