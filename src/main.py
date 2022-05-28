@@ -1,4 +1,5 @@
 import argparse
+import os
 import struct
 from PIL import Image
 from zquest.extract import ZeldaClassicReader
@@ -16,9 +17,9 @@ parser.add_argument('--save-csets', action='store_true',
 options = parser.parse_args()
 
 
-def save_midi_file(zc_midi, tracks, path):
+def save_midi_file(midi, path):
     tracks_with_data = []
-    for track in tracks:
+    for track in midi.tracks:
         if len(track) == 0:
             break
         tracks_with_data.append(track)
@@ -29,7 +30,7 @@ def save_midi_file(zc_midi, tracks, path):
         6,
         midi_format,
         len(tracks_with_data),
-        zc_midi['divisions'],
+        midi.divisions,
     ]
     data = struct.pack('>4sLhhh', *args)
 
@@ -57,12 +58,10 @@ if __name__ == "__main__":
     print('num combos', len(reader.combos))
 
     if options.save_midis:
-        for i in range(len(reader.midis['tunes'])):
-            zc_midi = reader.midis['tunes'][i]
-            if 'title' in zc_midi:
-                title = zc_midi['title']
-                save_midi_file(
-                    zc_midi, reader.midi_tracks[i], f'output/midi{i}.mid')
+        os.makedirs('output/midis', exist_ok=True)
+        for i, midi in enumerate(reader.midis):
+            if midi:
+                save_midi_file(midi, f'output/midis/{i}-{midi.title}.mid')
 
     with open('output/data.json', 'w') as file:
         file.write(reader.to_json())

@@ -14,6 +14,7 @@ from .sections.tile import get_tile_field
 from .sections.door import get_door_field
 from .sections.hdr import get_hdr_field
 from .sections.item import get_item_field
+from .sections.midi import get_midi_field
 from .version import Version
 
 if TYPE_CHECKING:
@@ -50,6 +51,23 @@ SECTION_IDS.FFSCRIPT = b'FFSC'
 SECTION_IDS.SFX = b'SFX '
 
 
+def access_bit(data: bytearray, index: int) -> int:
+    base = int(index // 8)
+    shift = int(index % 8)
+    return (data[base] & (1 << shift)) >> shift
+
+
+def set_bit(data: bytearray, index: int, on: bool):
+    base = int(index // 8)
+    shift = int(index % 8)
+    if on:
+        mask = 1 << shift
+        data[base] |= mask
+    else:
+        mask = ~(1 << shift)
+        data[base] &= mask
+
+
 def expand_field_shorthand(field: F) -> F:
     """
     Allows for shorthand fields.
@@ -67,7 +85,7 @@ def expand_field_shorthand(field: F) -> F:
 
     if type(field) == str:
         return F(type=field)
-    if field.arr_len != None and field.type != 'array':
+    if field.arr_len != None and field.type != 'array' and field.type != 'bytes':
         return F(type='array', arr_len=field.arr_len, field=F(type=field.type, fields=field.fields))
     else:
         return field
@@ -107,10 +125,10 @@ def read_field(bytes: Bytes, field: F, root_data: Any = None):
         case 'array':
             result = []
             if field.arr_bitmask:
-                mask = bytes.read_packed(field.arr_bitmask)
+                mask = bytearray(bytes.read(field.arr_bitmask))
                 for i in range(field.arr_len):
                     result.append(read_field(bytes, field.field)
-                                  if (mask >> i) & 1 else None)
+                                  if access_bit(mask, i) else None)
             else:
                 arr_len = eval_arr_len(field, bytes, root_data)
                 for _ in range(arr_len):
@@ -121,6 +139,9 @@ def read_field(bytes: Bytes, field: F, root_data: Any = None):
             for key, f in field.fields.items():
                 result[key] = read_field(bytes, f, root_data if root_data else result)
             return types.SimpleNamespace(**result)
+        case 'bytes':
+            arr_len = eval_arr_len(field, bytes, root_data)
+            return bytes.read(arr_len)
         case _:
             val = bytes.read_packed(field.type)
             if re.match(r'\d+s', field.type):
@@ -141,6 +162,7 @@ def serialize(reader: ZeldaClassicReader) -> bytearray:
         SECTION_IDS.TILES,
         SECTION_IDS.DOORS,
         SECTION_IDS.ITEMS,
+        SECTION_IDS.MIDIS,
     ]
     # Modify in the same order sections were found in the original file,
     # to avoid messing up the offsets of unprocessed sections.
@@ -180,6 +202,8 @@ def serialize_section(reader: ZeldaClassicReader, id: bytes) -> bytes:
             write_field(bytes, reader.doors, reader.section_fields[id])
         case SECTION_IDS.ITEMS:
             write_field(bytes, reader.items, reader.section_fields[id])
+        case SECTION_IDS.MIDIS:
+            write_field(bytes, reader.midis, reader.section_fields[id])
         case _:
             raise Exception(f'unexpected id {id}')
 
@@ -197,11 +221,11 @@ def write_field(bytes: Bytes, data: Any, field: F):
                 bytes.write_packed(field.arr_len, len(data))
 
             if field.arr_bitmask:
-                mask = 0
+                mask = bytearray(field.arr_bitmask)
                 for i in range(len(data)):
                     if data[i]:
-                        mask |= 1 << i
-                bytes.write_packed(field.arr_bitmask, mask)
+                        set_bit(mask, i, True)
+                bytes.write(mask)
                 for i in range(len(data)):
                     if data[i] != None:
                         write_field(bytes, data[i], field.field)
@@ -211,6 +235,10 @@ def write_field(bytes: Bytes, data: Any, field: F):
         case 'object':
             for key, f in field.fields.items():
                 write_field(bytes, getattr(data, key), f)
+        case 'bytes':
+            if type(field.arr_len) == str:
+                bytes.write_packed(field.arr_len, len(data))
+            bytes.write(data)
         case _:
             if type(data) == str:
                 data = data.encode()
@@ -230,6 +258,9 @@ def validate_field(field: F):
             for f in field.fields.values():
                 if f:
                     validate_field(f)
+        case 'bytes':
+            if field.arr_len == None:
+                raise Exception('bytes field type must have an arr_len')
         case _:
             # Only explicit byte order notation allowed is '>' and '!' (big-endian).
             # '<' (little-endian) is assumed by default, and not allowed explicitly.
@@ -262,6 +293,8 @@ def get_section_field(id: bytes, version: Version, sversion: int) -> F:
             field = get_door_field(version, sversion)
         case SECTION_IDS.ITEMS:
             field = get_item_field(version, sversion)
+        case SECTION_IDS.MIDIS:
+            field = get_midi_field(version, sversion)
         case _:
             raise Exception(f'unexpected id {id}')
 

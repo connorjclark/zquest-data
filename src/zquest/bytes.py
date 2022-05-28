@@ -33,7 +33,7 @@ class Bytes:
             self.f.seek(-1, 1)
         return byte
 
-    def read(self, n: int) -> List[int]:
+    def read(self, n: int) -> bytes:
         if n == 0:
             return b''
 
@@ -81,6 +81,16 @@ class Bytes:
         elif (word_size == 4):
             read = self.read_long
         return [read() for _ in range(length)]
+
+    def write_array(self, data: List[int], word_size: int):
+        if (word_size == 1):
+            write = self.write_byte
+        elif (word_size == 2):
+            write = self.write_int
+        elif (word_size == 4):
+            write = self.write_long
+        for x in data:
+            write(x)
 
     def read_str(self, n: int) -> str:
         raw = self.read(n)

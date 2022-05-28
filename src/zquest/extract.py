@@ -1,4 +1,5 @@
 import io
+import os
 import re
 import tempfile
 import traceback
@@ -70,7 +71,8 @@ class ZeldaClassicReader:
         # ]
         # assert_equal(preamble, self.b.read(len(preamble)))
 
-        outpath = './output/decoded.data'
+        outpath = 'output/decoded.data'
+        os.makedirs('output', exist_ok=True)
         (err, key) = py_decode(self.path, outpath)
         # Only bother with the stupid key (which we can set to be anything)
         # so the _exact_ same bytes can be written back and verify reading and
@@ -437,54 +439,10 @@ class ZeldaClassicReader:
         self.items = data
         self.section_fields[SECTION_IDS.ITEMS] = fields
 
-    # "readtunes" in qst.cpp
     def read_midis(self, section_bytes, section_version, section_cversion):
-        if section_version < 4:
-            raise 'TODO'
-
-        def access_bit(data, num):
-            base = int(num // 8)
-            shift = int(num % 8)
-            return (data[base] & (1 << shift)) >> shift
-
-        midis = {}
-        midi_tracks = [None for _ in range(252)]
-
-        midi_flags = section_bytes.read(32)
-        # print([access_bit(midi_flags,i) for i in range(len(midi_flags)*8)])
-
-        midis['tunes'] = []
-        for i in range(252):
-            tune = {}
-            midis['tunes'].append(tune)
-
-            if access_bit(midi_flags, i) == 0:
-                continue
-
-            tune['title'] = section_bytes.read_str(36)
-            tune['start'] = section_bytes.read_long()
-            tune['loop_start'] = section_bytes.read_long()
-            tune['loop_end'] = section_bytes.read_long()
-            tune['loop'] = section_bytes.read_int()
-            tune['volume'] = section_bytes.read_int()
-
-            if section_version >= 3:
-                tune['flags'] = section_bytes.read_byte()
-
-            tune['format'] = section_bytes.read_byte()
-            if tune['format'] != 0:
-                raise 'bad format'
-
-            tune['divisions'] = section_bytes.read_signed_int_big_endian()
-
-            midi_tracks[i] = []
-            for _ in range(32):
-                length = section_bytes.read_long_big_endian()
-                data = section_bytes.read(length)
-                midi_tracks[i].append(data)
-
-        self.midis = midis
-        self.midi_tracks = midi_tracks
+        data, fields = read_section(section_bytes, SECTION_IDS.MIDIS, self.version, section_version)
+        self.midis = data
+        self.section_fields[SECTION_IDS.MIDIS] = fields
 
     def read_doors(self, section_bytes, section_version, section_cversion):
         data, fields = read_section(section_bytes, SECTION_IDS.DOORS, self.version, section_version)

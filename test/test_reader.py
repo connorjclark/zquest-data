@@ -33,6 +33,7 @@ class TestReader(unittest.TestCase):
             'test_data/Classic XD.qst',
             'test_data/lost_isle.qst',
             'test_data/firebird.qst',
+            'test_data/bs/2.5/NewBS 3.1 - 1st Quest.qst',
         ]
         for input in inputs:
             reader = ZeldaClassicReader(input)
