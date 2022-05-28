@@ -157,23 +157,8 @@ def read_field(bytes: Bytes, field: F, root_data: Any = None):
 def serialize(reader: ZeldaClassicReader) -> bytearray:
     reader.b.rewind()
     raw_byte_array = bytearray(reader.b.read(reader.b.length))
+    ids = list(reader.section_fields)
 
-    # TODO: Currently doesn't support every section.
-    ids = [
-        SECTION_IDS.HEADER,
-        SECTION_IDS.COMBOS,
-        SECTION_IDS.MAPS,
-        SECTION_IDS.DMAPS,
-        SECTION_IDS.TILES,
-        SECTION_IDS.DOORS,
-        SECTION_IDS.ITEMS,
-        SECTION_IDS.MIDIS,
-        SECTION_IDS.GUYS,
-        SECTION_IDS.LINKSPRITES,
-        SECTION_IDS.WEAPONS,
-        SECTION_IDS.CSETS,
-        SECTION_IDS.RULES,
-    ]
     # Modify in the same order sections were found in the original file,
     # to avoid messing up the offsets of unprocessed sections.
     ids.sort(key=lambda id: -reader.section_offsets[id])
