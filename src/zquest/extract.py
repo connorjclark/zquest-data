@@ -18,7 +18,9 @@ def assert_equal(expected, actual):
 
 class ZeldaClassicReader:
     def __init__(self, path):
-        self.b = Bytes(open(path))
+        with open(path, 'rb') as f:
+            self.b = Bytes(io.BytesIO(f.read()))
+
         self.path = path
         self.section_fields = {}
         self.section_versions = {}
