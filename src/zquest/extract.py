@@ -27,6 +27,7 @@ class ZeldaClassicReader:
         self.section_cversions = {}
         self.section_offsets = {}
         self.section_lengths = {}
+        self.section_ok = {}
         self.errors = []
         self.combos = None
         self.tiles = None
@@ -143,11 +144,13 @@ class ZeldaClassicReader:
         self.section_lengths[id] = size
         section_bytes = Bytes(io.BytesIO(self.b.read(size)))
         if id in sections:
+            ok = True
             logging.debug(f'{id} {section_version}\t{section_cversion}\t{size}')
 
             try:
                 sections[id](section_bytes, section_version, section_cversion)
             except Exception as e:
+                ok = False
                 error = "".join(traceback.TracebackException.from_exception(e).format())
                 logging.error(error)
                 self.errors.append(error)

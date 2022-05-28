@@ -5,6 +5,8 @@ from ..version import Version
 def get_guy_field(version: Version, sversion: int) -> F:
     if sversion <= 2:
         raise Exception('TODO')
+    if sversion < 23:
+        raise Exception('TODO')
 
     guy_field = F(type='object', fields={
         'flags': 'I',
@@ -50,13 +52,15 @@ def get_guy_field(version: Version, sversion: int) -> F:
             'misc12': 'H' if sversion >= 19 else None,
         }),
 
-        '_padding1': F(arr_len=41 - 19, type='B') if sversion > 24 else None,
+        'more_defense': F(arr_len=41 - 19, type='B') if sversion > 24 else None,
         'txsz': 'I' if sversion > 25 else None,
         'tysz': 'I' if sversion > 25 else None,
         'hxsz': 'I' if sversion > 25 else None,
         'hysz': 'I' if sversion > 25 else None,
         'hzsz': 'I' if sversion > 25 else None,
-        '_padding2': F(arr_len=5, type='I') if sversion >= 26 else None,
+        '_padding2': F(arr_len=5, type='I') if sversion > 26 else None,
+        'wpn_sprite': 'I' if sversion > 27 else None,
+        'size_flags': 'I' if sversion > 28 else None,
         'frozen_tile': 'I' if sversion >= 30 else None,
         'frozen_cset': 'I' if sversion >= 30 else None,
         'frozen_clock': 'I' if sversion >= 30 else None,
@@ -68,8 +72,8 @@ def get_guy_field(version: Version, sversion: int) -> F:
             'movement': F(arr_len=32, type='I'),
             'new_weapon': F(arr_len=32, type='I'),
             'script': 'H',
-            'initD': F(arr_len=8, type='I'),
-            'initA': F(arr_len=2, type='I'),
+            'init_d': F(arr_len=8, type='I'),
+            'init_a': F(arr_len=2, type='I'),
         } if sversion >= 34 else {}),
 
         'editor_flags': 'I' if sversion >= 37 else None,
@@ -83,6 +87,13 @@ def get_guy_field(version: Version, sversion: int) -> F:
         '_skip': F(arr_len=8 * 65 * 2, type='B') if sversion >= 39 else None,
         'weapon_script': 'H' if sversion >= 40 else None,
         'weapon_initial_d': F(arr_len=8, type='I') if sversion >= 41 else None,
+        'move_flags': 'B' if sversion >= 42 else None,
+
+        **({
+            'spr_shadow': 'B',
+            'spr_death': 'B',
+            'spr_spawn': 'B',
+        } if sversion >= 44 else {}),
     })
 
     return F(type='object', fields={

@@ -1,5 +1,6 @@
 from __future__ import annotations
 import io
+import logging
 import re
 from typing import TYPE_CHECKING, Any, Tuple
 import types
@@ -164,6 +165,11 @@ def serialize(reader: ZeldaClassicReader) -> bytearray:
     ids.sort(key=lambda id: -reader.section_offsets[id])
 
     for id in ids:
+        if not reader.section_ok[id]:
+            logging.warning(
+                'skipping writing updated section for %r because had errors during reading', id)
+            continue
+
         combos_raw_bytes = serialize_section(reader, id)
         combos_start = reader.section_offsets[id]
         combos_end = combos_start + reader.section_lengths[id] + 12

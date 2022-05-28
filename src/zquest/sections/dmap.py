@@ -38,6 +38,10 @@ def get_dmap_field(version: Version, sversion: int) -> F:
         'passive_subscript': 'H' if sversion >= 14 else None,
         'sub_init_d': F(arr_len=8, type='I') if sversion >= 14 else None,
         'sub_init_d_label': F(arr_len=8 * 65, type='B') if sversion >= 14 else None,
+        'onmap_script': 'H' if sversion >= 15 else None,
+        'onmap_init_d': F(arr_len=8, type='I') if sversion >= 15 else None,
+        'onmap_init_d_label': F(arr_len=8 * 65, type='B') if sversion >= 15 else None,
+        'mirror_dmap': 'H' if sversion >= 16 else None,
     })
 
     return F(type='array', arr_len='H', field=dmap_field)

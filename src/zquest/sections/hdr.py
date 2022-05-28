@@ -55,4 +55,6 @@ def get_hdr_field(version: Version, sversion: int) -> F:
         } if sversion >= 4 else {}),
 
         'build_timezone': '6s' if sversion >= 5 else None,
+        'external_zinfo': 'B' if sversion >= 6 else None,
+        'new_version_is_nightly': 'B' if sversion >= 7 else None,
     })

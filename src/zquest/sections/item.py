@@ -102,7 +102,7 @@ def get_item_field(version: Version, sversion: int) -> F:
         'pickup': 'I' if sversion >= 30 else None,
         'p_string': 'H' if sversion >= 32 else None,
         'pickup_string_flags': 'H' if sversion >= 33 else None,
-        'cost_counter': 'B' if sversion >= 34 else None,
+        'cost_counter': F(arr_len=2 if sversion >= 53 else 1, type='B') if sversion >= 34 else None,
 
         **({
             # TODO
@@ -110,6 +110,8 @@ def get_item_field(version: Version, sversion: int) -> F:
             'sprite_initial_a': F(arr_len=2, type='B'),
             'sprite_script': 'H',
         } if sversion >= 44 else {}),
+
+        'pickup_flag': 'B' if sversion >= 48 else None,
     })
 
     return F(type='object', fields={
