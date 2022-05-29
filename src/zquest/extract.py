@@ -154,6 +154,7 @@ class ZeldaClassicReader:
             SECTION_IDS.MIDIS: self.read_midis,
             SECTION_IDS.DOORS: self.read_doors,
             SECTION_IDS.RULES: self.read_rules,
+            SECTION_IDS.INITDATA: self.read_init,
         }
 
         if size > self.b.length - self.b.bytes_read():
@@ -296,6 +297,12 @@ class ZeldaClassicReader:
         self.rules = data
         self.section_fields[SECTION_IDS.RULES] = fields
 
+    def read_init(self, section_bytes, section_version, section_cversion):
+        data, fields = read_section(section_bytes, SECTION_IDS.INITDATA,
+                                    self.version, section_version)
+        self.init = data
+        self.section_fields[SECTION_IDS.INITDATA] = fields
+
     def save_qst(self, qst_path):
         with tempfile.NamedTemporaryFile() as tmp:
             tmp.write(serialize(self))
@@ -318,5 +325,6 @@ class ZeldaClassicReader:
             'items': self.items,
             'midis': self.midis,
             'rules': self.rules,
+            'init': self.init,
         }
         return pretty_json_format(data)

@@ -21,6 +21,7 @@ from .sections.link import get_link_field
 from .sections.wpn import get_wpn_field
 from .sections.cset import get_cset_field
 from .sections.rule import get_rule_field
+from .sections.init import get_init_field
 from .version import Version
 
 if TYPE_CHECKING:
@@ -215,6 +216,8 @@ def serialize_section(reader: ZeldaClassicReader, id: bytes) -> bytes:
             write_field(bytes, reader.csets, reader.section_fields[id])
         case SECTION_IDS.RULES:
             write_field(bytes, reader.rules, reader.section_fields[id])
+        case SECTION_IDS.INITDATA:
+            write_field(bytes, reader.init, reader.section_fields[id])
         case _:
             raise Exception(f'unexpected id {id}')
 
@@ -319,6 +322,8 @@ def get_section_field(id: bytes, version: Version, sversion: int) -> F:
             field = get_cset_field(version, sversion)
         case SECTION_IDS.RULES:
             field = get_rule_field(version, sversion)
+        case SECTION_IDS.INITDATA:
+            field = get_init_field(version, sversion)
         case _:
             raise Exception(f'unexpected id {id}')
 
