@@ -71,12 +71,21 @@ def set_mirror_mode(mode: str):
     assert len(set(walkable_flags_mirrored)) == 4
 
 
+def get_bit(val: int, index: int) -> int:
+    mask = 1 << index
+    return val & mask
+
+
 def set_bit(val: int, index: int, x: int) -> int:
     mask = 1 << index
     val &= ~mask
     if x:
         val |= mask
     return val
+
+
+def flip_bit(val: int, index: int) -> int:
+    return set_bit(val, index, not get_bit(val, index))
 
 
 def to_index(x: int, y: int, w: int) -> int:
@@ -338,6 +347,12 @@ def mirror_qst(mirror_mode: str, in_path: str, out_path: str):
         reader.header.title = reader.header.title[0:reader.header.title.find('\x00')]
     reader.header.title += ' - Mirrored %s' % ' and '.join(mirrored_strs)
     reader.header.author = 'Connor Clark'
+
+    if is_horizontal_mirror:
+        for guy in reader.guys.guys:
+            # eeAQUA
+            if guy.family == 22:
+                guy.misc[0] = flip_bit(guy.misc[0], 0)
 
     reader.save_qst(out_path)
 

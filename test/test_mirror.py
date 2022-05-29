@@ -15,8 +15,8 @@ class TestMirror(unittest.TestCase):
 
     def test_mirror_qst(self):
         self.assertEqual(self.get_hash('vertical'), '842385b707c279b4b92be82adfbf7b4d')
-        self.assertEqual(self.get_hash('horizontal'), 'd74c1c210cc8bf67d4c1004d81d513d8')
-        self.assertEqual(self.get_hash('both'), '978ac1faf09845480856636d6d59467d')
+        self.assertEqual(self.get_hash('horizontal'), 'f038a4ecccd871e6e5a20e842f24d1e0')
+        self.assertEqual(self.get_hash('both'), 'b68e61e5aa130349468ff29b6c486021')
 
 
 if __name__ == '__main__':
