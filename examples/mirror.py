@@ -220,6 +220,21 @@ def mirror_qst(mirror_mode: str, in_path: str, out_path: str):
             screen.side_warp_screen = mirror_1d(screen.side_warp_screen, map_width, map_height)
             screen.tile_warp_screen = mirror_1d(screen.tile_warp_screen, map_width, map_height)
 
+            # Warps to NES-dungeon dmaps need to be adjusted for horizontal mirrors.
+            for i, dmap_index in enumerate(screen.tile_warp_dmap):
+                dmap = reader.dmaps[dmap_index]
+                if dmap.type == 0:
+                    x, y = to_xy(screen.tile_warp_screen[i], map_width)
+                    x = x % 8
+                    screen.tile_warp_screen[i] = to_index(x, y, map_width)
+
+            for i, dmap_index in enumerate(screen.side_warp_dmap):
+                dmap = reader.dmaps[dmap_index]
+                if dmap.type == 0:
+                    x, y = to_xy(screen.side_warp_screen[i], map_width)
+                    x = x % 8
+                    screen.side_warp_screen[i] = to_index(x, y, map_width)
+
             # top-left warp return squares have a special meaning for the test mode position
             # selection–and is 99.99% not really being used. So don't touch it in that case.
             if any(screen.warp_return_x) or any(screen.warp_return_y):
@@ -248,6 +263,33 @@ def mirror_qst(mirror_mode: str, in_path: str, out_path: str):
                 for ff in screen.ff:
                     if ff:
                         ff.x, ff.y = mirror_pos(ff.x, ff.y)
+
+    for dmap in reader.dmaps:
+        if not dmap.name.strip() and not dmap.title.strip():
+            continue
+
+        # -7 to 15
+        new_x, _ = mirror_xy(dmap.xoff + 7, 0, 22, 0)
+        new_x -= 7
+        dmap.xoff = new_x
+
+        grid = [[0 for y in range(8)] for x in range(8)]
+        for y in range(8):
+            for x in range(8):
+                grid[y][x] = dmap.grid[y] & (1 << (7-x)) != 0
+
+        new_grid = [[0 for y in range(8)] for x in range(8)]
+        for y in range(8):
+            for x in range(8):
+                new_x, new_y = mirror_xy(x, y, len(grid) - 1, len(grid[0]) - 1)
+                new_grid[y][x] = grid[new_y][new_x]
+
+        for y in range(8):
+            row_val = 0
+            for x in range(8):
+                if new_grid[y][7 - x]:
+                    row_val |= 1 << x
+            dmap.grid[y] = row_val
 
     for combo in reader.combos:
         hor = combo.flip & 1 != 0

@@ -14,9 +14,9 @@ class TestMirror(unittest.TestCase):
         return hashlib.md5(Path('.tmp/1st-mirror-test.qst').read_bytes()).hexdigest()
 
     def test_mirror_qst(self):
-        self.assertEqual(self.get_hash('vertical'), 'afddec3bfcebaf296e13b8a628b6eece')
-        self.assertEqual(self.get_hash('horizontal'), '3a3c90d307d2f7a6d1f3879570800678')
-        self.assertEqual(self.get_hash('both'), 'd938701a9bb6716d6357fc676c670b15')
+        self.assertEqual(self.get_hash('vertical'), '09ea4fba4124d2be16e6c4e564fc80ff')
+        self.assertEqual(self.get_hash('horizontal'), 'd5eed71a394dcf4f468ab2085e161b51')
+        self.assertEqual(self.get_hash('both'), 'a44ec690978f2032a3427e79b02b8c83')
 
 
 if __name__ == '__main__':
