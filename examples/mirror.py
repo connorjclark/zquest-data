@@ -274,6 +274,17 @@ def mirror_qst(mirror_mode: str, in_path: str, out_path: str):
         if is_horizontal_mirror:
             door_set.left, door_set.right = door_set.right, door_set.left
 
+    mirrored_strs = []
+    if is_vertical_mirror:
+        mirrored_strs.append('vertical')
+    elif is_horizontal_mirror:
+        mirrored_strs.append('horizontal')
+
+    if reader.header.title.find('\x00'):
+        reader.header.title = reader.header.title[0:reader.header.title.find('\x00')]
+    reader.header.title += ' - Mirrored %s' % ' and '.join(mirrored_strs)
+    reader.header.author = 'Connor Clark'
+
     reader.save_qst(out_path)
 
 
