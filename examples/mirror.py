@@ -98,7 +98,7 @@ def to_xy(index: int, w: int) -> int:
     return x, y
 
 
-def adjust_screen_nes_dmap(index: int) -> int:
+def adjust_screen_non_overworld_dmap(index: int) -> int:
     x, y = to_xy(index, map_width)
     x = x % 8
     return to_index(x, y, map_width)
@@ -147,7 +147,13 @@ def mirror_screen(index: int) -> int:
 
 
 def mirror_pos(x: int, y: int) -> Tuple[int, int]:
-    return mirror_xy(x, y, pos_width - 16, pos_height - 16)
+    x, y = mirror_xy(x, y, pos_width - 16, pos_height - 16)
+    # Ex: item spawn flag can be placed a half-tile off the screen to the right,
+    # or an entire tile off the screen on the bottom. When mirrored, we can't
+    # allow negative values so round up to zero.
+    x = max(0, x)
+    y = max(0, y)
+    return x, y
 
 
 def mirror_pos_arr(x_arr: List[int], y_arr: List[int]) -> Tuple[List[int], List[int]]:
@@ -229,22 +235,24 @@ def mirror_qst(mirror_mode: str, in_path: str, out_path: str):
             screen.flags2 = flags2
 
             # TODO: mirror side_warp_index
-            if screen.side_warp_index != 0:
+            if hasattr(screen, 'side_warp_index') and screen.side_warp_index != 0:
                 raise Exception('Only quests that use just A warps can be mirrored')
 
             screen.side_warp_screen = mirror_1d(screen.side_warp_screen, map_width, map_height)
             screen.tile_warp_screen = mirror_1d(screen.tile_warp_screen, map_width, map_height)
 
-            # Warps to NES-dungeon dmaps need to be adjusted for horizontal mirrors.
+            # Warps to non-overworld dmaps need to be adjusted for horizontal mirrors.
             for i, dmap_index in enumerate(screen.tile_warp_dmap):
                 dmap = reader.dmaps[dmap_index]
-                if dmap.type == 0:
-                    screen.tile_warp_screen[i] = adjust_screen_nes_dmap(screen.tile_warp_screen[i])
+                if dmap.type != 1:
+                    screen.tile_warp_screen[i] = adjust_screen_non_overworld_dmap(
+                        screen.tile_warp_screen[i])
 
             for i, dmap_index in enumerate(screen.side_warp_dmap):
                 dmap = reader.dmaps[dmap_index]
-                if dmap.type == 0:
-                    screen.side_warp_screen[i] = adjust_screen_nes_dmap(screen.side_warp_screen[i])
+                if dmap.type != 1:
+                    screen.side_warp_screen[i] = adjust_screen_non_overworld_dmap(
+                        screen.side_warp_screen[i])
 
             # top-left warp return squares have a special meaning for the test mode position
             # selection–and is 99.99% not really being used. So don't touch it in that case.
@@ -273,15 +281,16 @@ def mirror_qst(mirror_mode: str, in_path: str, out_path: str):
             if hasattr(screen, 'ff'):
                 for ff in screen.ff:
                     if ff:
-                        ff.x, ff.y = mirror_pos(ff.x, ff.y)
+                        x, y = mirror_pos(int(ff.x / 10_000), int(ff.y / 10_000))
+                        ff.x, ff.y = x * 10_000, y * 10_000
 
     for dmap in reader.dmaps:
         dmap.cont = mirror_screen(dmap.cont)
         dmap.compass = mirror_screen(dmap.compass)
 
-        if dmap.type == 0:
-            dmap.cont = adjust_screen_nes_dmap(dmap.cont)
-            dmap.compass = adjust_screen_nes_dmap(dmap.compass)
+        if dmap.type != 1:
+            dmap.cont = adjust_screen_non_overworld_dmap(dmap.cont)
+            dmap.compass = adjust_screen_non_overworld_dmap(dmap.compass)
 
         if not dmap.name.strip() and not dmap.title.strip():
             continue
@@ -335,7 +344,8 @@ def mirror_qst(mirror_mode: str, in_path: str, out_path: str):
             door_set.left, door_set.right = door_set.right, door_set.left
 
     # This is just for the editor.
-    reader.init.last_screen = mirror_screen(reader.init.last_screen)
+    if reader.init:
+        reader.init.last_screen = mirror_screen(reader.init.last_screen)
 
     mirrored_strs = []
     if is_vertical_mirror:
