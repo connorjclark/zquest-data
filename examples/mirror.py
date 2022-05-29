@@ -89,6 +89,12 @@ def to_xy(index: int, w: int) -> int:
     return x, y
 
 
+def adjust_screen_nes_dmap(index: int) -> int:
+    x, y = to_xy(index, map_width)
+    x = x % 8
+    return to_index(x, y, map_width)
+
+
 def mirror_direction(dir: int) -> int:
     # damn python is cool
     return directions.index(directions_mirrored[dir])
@@ -224,16 +230,12 @@ def mirror_qst(mirror_mode: str, in_path: str, out_path: str):
             for i, dmap_index in enumerate(screen.tile_warp_dmap):
                 dmap = reader.dmaps[dmap_index]
                 if dmap.type == 0:
-                    x, y = to_xy(screen.tile_warp_screen[i], map_width)
-                    x = x % 8
-                    screen.tile_warp_screen[i] = to_index(x, y, map_width)
+                    screen.tile_warp_screen[i] = adjust_screen_nes_dmap(screen.tile_warp_screen[i])
 
             for i, dmap_index in enumerate(screen.side_warp_dmap):
                 dmap = reader.dmaps[dmap_index]
                 if dmap.type == 0:
-                    x, y = to_xy(screen.side_warp_screen[i], map_width)
-                    x = x % 8
-                    screen.side_warp_screen[i] = to_index(x, y, map_width)
+                    screen.side_warp_screen[i] = adjust_screen_nes_dmap(screen.side_warp_screen[i])
 
             # top-left warp return squares have a special meaning for the test mode position
             # selection–and is 99.99% not really being used. So don't touch it in that case.
@@ -265,6 +267,13 @@ def mirror_qst(mirror_mode: str, in_path: str, out_path: str):
                         ff.x, ff.y = mirror_pos(ff.x, ff.y)
 
     for dmap in reader.dmaps:
+        dmap.cont = mirror_screen(dmap.cont)
+        dmap.compass = mirror_screen(dmap.compass)
+
+        if dmap.type == 0:
+            dmap.cont = adjust_screen_nes_dmap(dmap.cont)
+            dmap.compass = adjust_screen_nes_dmap(dmap.compass)
+
         if not dmap.name.strip() and not dmap.title.strip():
             continue
 
@@ -315,6 +324,9 @@ def mirror_qst(mirror_mode: str, in_path: str, out_path: str):
             door_set.up, door_set.down = door_set.down, door_set.up
         if is_horizontal_mirror:
             door_set.left, door_set.right = door_set.right, door_set.left
+
+    # This is just for the editor.
+    reader.init.last_screen = mirror_screen(reader.init.last_screen)
 
     mirrored_strs = []
     if is_vertical_mirror:
