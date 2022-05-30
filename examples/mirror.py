@@ -84,6 +84,14 @@ def set_bit(val: int, index: int, x: int) -> int:
     return val
 
 
+def swap_bits(val: int, index_1: int, index_2: int) -> int:
+    bit_1 = get_bit(val, index_1)
+    bit_2 = get_bit(val, index_2)
+    val = set_bit(val, index_1, bit_2)
+    val = set_bit(val, index_2, bit_1)
+    return val
+
+
 def flip_bit(val: int, index: int) -> int:
     return set_bit(val, index, not get_bit(val, index))
 
@@ -222,17 +230,10 @@ def mirror_qst(mirror_mode: str, in_path: str, out_path: str):
             screen.data = mirror_2d(screen.data, screen_width, screen_height)
             screen.cset = mirror_2d(screen.cset, screen_width, screen_height)
             screen.sflag = mirror_2d(screen.sflag, screen_width, screen_height)
-
-            udlr_flags = mirror_directional_array([
-                screen.flags2 & 1 != 0,
-                screen.flags2 & 2 != 0,
-                screen.flags2 & 4 != 0,
-                screen.flags2 & 8 != 0,
-            ])
-            flags2 = screen.flags2
-            for i, x in enumerate(udlr_flags):
-                flags2 = set_bit(flags2, i, x)
-            screen.flags2 = flags2
+            if is_vertical_mirror:
+                screen.flags2 = swap_bits(screen.flags2, 0, 1)
+            if is_horizontal_mirror:
+                screen.flags2 = swap_bits(screen.flags2, 2, 3)
 
             # TODO: mirror side_warp_index
             if hasattr(screen, 'side_warp_index') and screen.side_warp_index != 0:
