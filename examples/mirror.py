@@ -235,9 +235,13 @@ def mirror_qst(mirror_mode: str, in_path: str, out_path: str):
             if is_horizontal_mirror:
                 screen.flags2 = swap_bits(screen.flags2, 2, 3)
 
-            # TODO: mirror side_warp_index
-            if hasattr(screen, 'side_warp_index') and screen.side_warp_index != 0:
-                raise Exception('Only quests that use just A warps can be mirrored')
+            if hasattr(screen, 'side_warp_index'):
+                if is_vertical_mirror:
+                    for i in range(2):
+                        screen.side_warp_index = swap_bits(screen.side_warp_index, i, i + 2)
+                if is_horizontal_mirror:
+                    for i in range(2, 4):
+                        screen.side_warp_index = swap_bits(screen.side_warp_index, i, i + 2)
 
             screen.side_warp_screen = mirror_1d(screen.side_warp_screen, map_width, map_height)
             screen.tile_warp_screen = mirror_1d(screen.tile_warp_screen, map_width, map_height)
