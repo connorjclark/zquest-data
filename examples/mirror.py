@@ -259,11 +259,13 @@ def mirror_qst(mirror_mode: str, in_path: str, out_path: str):
             if any(screen.warp_return_x) or any(screen.warp_return_y):
                 screen.warp_return_x, screen.warp_return_y = mirror_pos_arr(
                     screen.warp_return_x, screen.warp_return_y)
+            if screen.warp_arrival_x or screen.warp_arrival_y:
+                screen.warp_arrival_x, screen.warp_arrival_y = mirror_pos(
+                    screen.warp_arrival_x, screen.warp_arrival_y)
 
+            if screen.stair_x or screen.stair_y:
+                screen.stair_x, screen.stair_y = mirror_pos(screen.stair_x, screen.stair_y)
             screen.item_x, screen.item_y = mirror_pos(screen.item_x, screen.item_y)
-            screen.stair_x, screen.stair_y = mirror_pos(screen.stair_x, screen.stair_y)
-            screen.warp_arrival_x, screen.warp_arrival_y = mirror_pos(
-                screen.warp_arrival_x, screen.warp_arrival_y)
             if hasattr(screen, 'newitem_y'):
                 screen.newitem_x, screen.newitem_y = mirror_pos_arr(
                     screen.newitem_x, screen.newitem_y)
@@ -318,6 +320,17 @@ def mirror_qst(mirror_mode: str, in_path: str, out_path: str):
                     row_val |= 1 << x
             dmap.grid[y] = row_val
 
+    combo_type_swaps = []
+    if is_horizontal_mirror:
+        combo_type_swaps.extend([
+            ('Conveyor Left', 'Conveyor Right'),
+            ('Left Statue', 'Right Statue'),
+        ])
+    if is_vertical_mirror:
+        combo_type_swaps.append(('Conveyor Up', 'Conveyor Down'))
+    combo_type_swaps = [(combo_type_names.index(a), combo_type_names.index(b))
+                        for a, b in combo_type_swaps]
+
     for combo in reader.combos:
         hor = combo.flip & 1 != 0
         ver = combo.flip & 2 != 0
@@ -332,7 +345,11 @@ def mirror_qst(mirror_mode: str, in_path: str, out_path: str):
             if 'Cave' in type_name:
                 combo.walk = 0
 
-        # TODO: swap combo types like Conveyor Up <-> Conveyor Down
+        for a, b in combo_type_swaps:
+            if combo.type == a:
+                combo.type = b
+            elif combo.type == b:
+                combo.type = a
 
     for door_set in reader.doors:
         for door, offset, sw, sh in iterate_door_set(door_set):
