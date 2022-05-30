@@ -356,7 +356,9 @@ def mirror_qst(mirror_mode: str, in_path: str, out_path: str):
     if reader.header.title.find('\x00'):
         reader.header.title = reader.header.title[0:reader.header.title.find('\x00')]
     reader.header.title += ' - Mirrored %s' % ' and '.join(mirrored_strs)
-    reader.header.author = 'Connor Clark'
+    if reader.header.author.find('\x00'):
+        reader.header.author = reader.header.author[0:reader.header.author.find('\x00')]
+    reader.header.author += ' & Connor Clark'
 
     if is_horizontal_mirror:
         for guy in reader.guys.guys:
