@@ -382,7 +382,7 @@ def mirror_qst(mirror_mode: str, in_path: str, out_path: str):
         reader.header.author = reader.header.author[0:reader.header.author.find('\x00')]
     reader.header.author += ' & Connor Clark'
 
-    if is_horizontal_mirror:
+    if is_horizontal_mirror and reader.guys:
         for guy in reader.guys.guys:
             # eeAQUA
             if guy.family == 22:
