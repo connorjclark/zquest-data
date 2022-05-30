@@ -10,7 +10,7 @@ def get_init_field(version: Version, sversion: int) -> F:
 
     extended_arrays = sversion > 12 or version == Version(zelda_version=0x211, build=18)
     return F(type='object', fields={
-        'items': F(arr_len=256, type='B') if sversion >= 10 else None,
+        'items': F(arr_len=256, type='?') if sversion >= 10 else None,
         '_padding1': F(arr_len=6, type='B') if sversion < 10 else None,
         '_padding2': F(arr_len=7, type='B') if sversion < 10 else None,
         '_padding3': F(arr_len=5, type='B') if sversion < 10 else None,
