@@ -1,11 +1,13 @@
-from io import IOBase
-import os
 from struct import *
 from typing import Any
+
+# TODO: break up into reading / writing classes.
 
 
 class Bytes:
     def __init__(self, data: bytearray):
+        # offset is_only used for reading. bytes written are always
+        # appended to the end of the bytearray.
         self.offset = 0
         self.data = data
         self.length = len(data)
@@ -41,11 +43,9 @@ class Bytes:
 
     def write(self, n: Any):
         if type(n) == bytearray or type(n) == bytes or type(n) == list:
-            self.data[self.offset:self.offset] += n
-            self.offset += len(n)
+            self.data.extend(n)
         else:
-            self.data[self.offset:self.offset] += bytearray([n])
-            self.offset += 1
+            self.data.append(n)
 
     def read_packed(self, format: str) -> Any:
         result = unpack_from(format, self.data, self.offset)[0]
@@ -54,9 +54,7 @@ class Bytes:
 
     def write_packed(self, format: str, val: Any):
         result = pack(format, val)
-        result_len = len(result)
-        self.data[self.offset:self.offset+result_len] = result
-        self.offset += result_len
+        self.data += result
 
     def read_byte(self) -> int:
         return self.read_packed('B')

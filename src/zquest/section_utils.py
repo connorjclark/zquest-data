@@ -1,5 +1,4 @@
 from __future__ import annotations
-import io
 import logging
 import re
 from typing import TYPE_CHECKING, Any, Tuple
@@ -163,7 +162,7 @@ def read_field(b: Bytes, field: F, root_data: Any = None):
 
 def serialize(reader: ZeldaClassicReader) -> bytearray:
     reader.b.rewind()
-    raw_byte_array = bytearray(reader.b.read(reader.b.length))
+    raw_byte_array = reader.b.data.copy()
     ids = list(reader.section_fields)
 
     # Modify in the same order sections were found in the original file,
@@ -192,7 +191,7 @@ def serialize_section(reader: ZeldaClassicReader, id: bytes) -> bytearray:
     bytes.write_int(reader.section_versions[id])
     bytes.write_int(reader.section_cversions[id])
     bytes.write_long(0)
-    assert bytes.bytes_read() == 12
+    assert len(bytes.data) == 12
 
     match id:
         case SECTION_IDS.HEADER:
@@ -228,11 +227,9 @@ def serialize_section(reader: ZeldaClassicReader, id: bytes) -> bytearray:
         case _:
             raise Exception(f'unexpected id {id}')
 
-    bytes.offset = 8
-    # TODO: this is the only place that Bytes needs to be able to "overwrite" itself,
-    # as opposed to appending at the end. Might be able to simplify Bytes if overwriting
-    # was handled here directly.
-    bytes.write_long(len(bytes.data) - 12)
+    temp_b = Bytes(bytearray())
+    temp_b.write_long(len(bytes.data) - 12)
+    bytes.data[8:12] = temp_b.data
 
     return bytes.data
 
