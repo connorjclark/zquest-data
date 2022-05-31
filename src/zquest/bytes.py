@@ -22,7 +22,6 @@ class Bytes:
         self.offset = 0
 
     def has_bytes(self) -> bool:
-        self.length = len(self.data)
         return self.length > self.offset
 
     def peek(self, n: int):
@@ -30,8 +29,8 @@ class Bytes:
         self.advance(-len(bytes))
         return bytes
 
-    def read(self, n: int) -> bytes:
-        result = bytes(self.data[self.offset:self.offset+n])
+    def read(self, n: int) -> bytearray:
+        result = self.data[self.offset:self.offset+n]
         self.offset += n
         # TODO: 1st-latest.qst rule section should be 100 bytes, but is only 26?
         # old file-based (self.f.read) code made this no problem, but new code

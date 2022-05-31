@@ -119,7 +119,7 @@ class ZeldaClassicReader:
         logging.debug(self.header.title)
 
     def read_section_header(self):
-        id = self.b.read(4)
+        id = bytes(self.b.read(4))
         section_version = self.b.read_int()
         section_cversion = self.b.read_int()
         return (id, section_version, section_cversion)
@@ -165,7 +165,7 @@ class ZeldaClassicReader:
             size = self.b.length - self.b.bytes_read()
 
         self.section_lengths[id] = size
-        section_bytes = Bytes(bytearray(self.b.read(size)))
+        section_bytes = Bytes(self.b.read(size))
         if id in sections:
             ok = True
             logging.debug(f'{id} {section_version}\t{section_cversion}\t{size}')
