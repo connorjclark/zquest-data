@@ -1,3 +1,4 @@
+import base64
 import json
 from types import SimpleNamespace
 import numpy
@@ -39,7 +40,9 @@ def pretty_json_format(o, level=2):
     elif isinstance(o, int):
         ret += str(o)
     elif isinstance(o, bytes):
-        ret += str(o)
+        ret += json.dumps(str(base64.b64encode(o).decode('ascii')))
+    elif isinstance(o, bytearray):
+        ret += json.dumps(str(base64.b64encode(o).decode('ascii')))
     elif isinstance(o, float):
         ret += '%.7g' % o
     elif isinstance(o, numpy.ndarray) and numpy.issubdtype(o.dtype, numpy.integer):
