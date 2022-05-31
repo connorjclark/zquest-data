@@ -27,11 +27,10 @@ class Bytes:
             self.f.seek(-1, 1)
         return more_bytes
 
-    def peek(self):
-        byte = self.f.read(1)
-        if byte != b'':
-            self.f.seek(-1, 1)
-        return byte
+    def peek(self, n: int):
+        bytes = self.f.read(n)
+        self.f.seek(-len(bytes), 1)
+        return bytes
 
     def read(self, n: int) -> bytes:
         if n == 0:

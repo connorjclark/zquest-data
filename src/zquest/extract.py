@@ -85,11 +85,11 @@ class ZeldaClassicReader:
                 'qst file is pre-1.93, and is too old to read more than the header section')
             return
 
-        # Skip ahead to the beginning of the HDR section.
-        header_start = decoded.find(b'HDR ')
-        if header_start == -1:
+        # The preamble is actually 31 bytes, but we ignore the last two for comparison purposes above.
+        self.b.advance(2)
+
+        if self.b.peek(4) != SECTION_IDS.HEADER:
             raise Exception('could not find HDR section')
-        self.b.f.seek(header_start)
 
         # actually read the data now
         while self.b.has_bytes():
