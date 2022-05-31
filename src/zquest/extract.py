@@ -69,7 +69,6 @@ class ZeldaClassicReader:
         preambles = [
             b'AG Zelda Classic Quest File\n ',
             b'AG ZC Enhanced Quest File\n   ',
-            b'Zelda Classic Quest File     ',
         ]
         if self.preamble not in preambles:
             raise Exception(f'unexpected preamble: {self.preamble}')
