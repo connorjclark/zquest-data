@@ -18,7 +18,7 @@ def get_hdr_field(version: Version, sversion: int) -> F:
             'zq_tiles': 'B',
             'midi_flags': F(type='bytes', arr_len=4),
             'cheats_2': 'B',
-            'dummy': '14s',
+            'dummy': F(type='bytes', arr_len=14),
             'quest_rule_2': 'B',
             'quest_rule_3': 'B',
             'dummy_2': 'B',
@@ -45,10 +45,10 @@ def get_hdr_field(version: Version, sversion: int) -> F:
         'author': '65s',
         'use_keyfile': 'B',
         'flag_tiles': 'B',
-        'dummy1': '4s',
-        'flag_cheats2': 'B',
-        'dummy2': '14s',
-        'templatepath': f'{templatepath_len}s',
+        'dummy_1': F(type='bytes', arr_len=4),
+        'flag_cheats_2': 'B',
+        'dummy_2': F(type='bytes', arr_len=14),
+        'template_path': f'{templatepath_len}s',
         'map_count': 'B',
 
         **({
