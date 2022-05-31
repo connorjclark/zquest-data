@@ -280,7 +280,7 @@ def validate_struct_format(format: str) -> str:
         raise Exception(f'bad field: {format}. Don\'t use native byte order')
     if format[0] == '<':
         raise Exception(f'bad field: {format}. Drop <, little-endian is assumed')
-    if not re.match(r'\d+s', format) and format[0] != '>' and format[0] != '!':
+    if not re.match(r'^(\d+s|B)$', format) and format[0] != '>' and format[0] != '!':
         format = f'<{format}'
     try:
         calcsize(format)
