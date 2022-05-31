@@ -26,7 +26,7 @@ def get_str_field(version: Version, sversion: int) -> F:
             'v_space': 'B',
             'flags': 'B',
         } if sversion >= 5 else {
-            'y': 'B',
+            'y': 'B' if sversion >= 2 else None,
         }),
 
         **({
