@@ -175,10 +175,10 @@ def serialize(reader: ZeldaClassicReader) -> bytearray:
                 'skipping writing updated section for %r because had errors during reading', id)
             continue
 
-        combos_raw_bytes = serialize_section(reader, id)
-        combos_start = reader.section_offsets[id]
-        combos_end = combos_start + reader.section_lengths[id] + 12
-        raw_byte_array[combos_start:combos_end] = combos_raw_bytes
+        section_raw_bytes = serialize_section(reader, id)
+        section_start = reader.section_offsets[id]
+        section_end = section_start + reader.section_lengths[id] + 12
+        raw_byte_array[section_start:section_end] = section_raw_bytes
 
     return raw_byte_array
 
