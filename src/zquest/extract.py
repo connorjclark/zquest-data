@@ -130,17 +130,19 @@ class ZeldaClassicReader:
         offset = self.b.bytes_read()
         id, section_version, section_cversion = self.read_section_header()
         size = self.b.read_long()
-        self.section_offsets[id] = offset
-        self.section_versions[id] = section_version
-        self.section_cversions[id] = section_cversion
 
         # Sometimes there is garbage data between sections.
         if not re.match("\w{3,4}", id.decode("ascii", errors="ignore")):
             logging.warning(f"garbage section id: {id}, skipping ahead some bytes...")
             while id not in vars(SECTION_IDS).values():
                 self.b.advance(-12 + 1)
+                offset = self.b.bytes_read()
                 id, section_version, section_cversion = self.read_section_header()
                 size = self.b.read_long()
+
+        self.section_offsets[id] = offset
+        self.section_versions[id] = section_version
+        self.section_cversions[id] = section_cversion
 
         sections = {
             SECTION_IDS.HEADER: self.read_header,
