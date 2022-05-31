@@ -1,7 +1,13 @@
+from functools import cache
 from struct import *
 from typing import Any
 
 # TODO: break up into reading / writing classes.
+
+
+@cache
+def cached_calcsize(format: str) -> int:
+    return calcsize(format)
 
 
 class Bytes:
@@ -48,7 +54,7 @@ class Bytes:
 
     def read_packed(self, format: str) -> Any:
         result = unpack_from(format, self.data, self.offset)[0]
-        self.offset += calcsize(format)
+        self.offset += cached_calcsize(format)
         return result
 
     def write_packed(self, format: str, val: Any):
