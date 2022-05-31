@@ -33,11 +33,7 @@ class Bytes:
         return bytes
 
     def read(self, n: int) -> bytes:
-        if n == 0:
-            return b''
-
-        data = self.f.read(n)
-        return data
+        return self.f.read(n)
 
     def write(self, n: int):
         self.f.write(n)
