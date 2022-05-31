@@ -1,7 +1,7 @@
 from io import IOBase
 import os
 from struct import *
-from typing import Any, List
+from typing import Any
 
 
 class Bytes:
@@ -56,46 +56,8 @@ class Bytes:
     def write_int(self, val):
         self.f.write(pack('<H', val))
 
-    def read_signed_int_big_endian(self) -> int:
-        return unpack('>h', self.read(2))[0]
-
     def read_long(self) -> int:
         return unpack('<I', self.read(4))[0]
 
     def write_long(self, val):
         self.f.write(pack('<I', val))
-
-    def read_long_big_endian(self) -> int:
-        return unpack('>I', self.read(4))[0]
-
-    def read_array(self, word_size, length) -> List[int]:
-        if (word_size == 1):
-            read = self.read_byte
-        elif (word_size == 2):
-            read = self.read_int
-        elif (word_size == 4):
-            read = self.read_long
-        return [read() for _ in range(length)]
-
-    def write_array(self, data: List[int], word_size: int):
-        if (word_size == 1):
-            write = self.write_byte
-        elif (word_size == 2):
-            write = self.write_int
-        elif (word_size == 4):
-            write = self.write_long
-        for x in data:
-            write(x)
-
-    def read_str(self, n: int) -> str:
-        raw = self.read(n)
-        return raw.rstrip(b'\x00').decode('utf-8', errors='ignore')
-
-    def debug(self, n):
-        b = self.read(n)
-        print('DEBUG')
-        print(b)
-        print(b.hex())
-        for byte in b:
-            print(byte)
-        self.f.seek(-n, 1)
