@@ -156,7 +156,7 @@ def read_field(bytes: Bytes, field: F, root_data: Any = None):
         case _:
             val = bytes.read_packed(field.type)
             if re.match(r'\d+s', field.type):
-                val = val.rstrip(b'\x00').decode('utf-8', errors='ignore')
+                val = val.rstrip(b'\x00').decode('latin1')
             return val
 
 
@@ -264,7 +264,7 @@ def write_field(bytes: Bytes, data: Any, field: F):
             bytes.write(data)
         case _:
             if type(data) == str:
-                data = data.encode()
+                data = data.encode('latin1')
             bytes.write_packed(field.type, data)
 
 
