@@ -128,34 +128,35 @@ def eval_arr_len(field: F, bytes: Bytes, data: Any):
         raise Exception(f'unhandled type {type(arr_len)}: can\'t handle {arr_len}')
 
 
-def read_field(bytes: Bytes, field: F, root_data: Any = None):
+def read_field(b: Bytes, field: F, root_data: Any = None):
     match field.type:
         case 'array':
             result = []
             if field.arr_bitmask:
-                mask = bytearray(bytes.read(field.arr_bitmask))
+                mask = bytearray(b.read(field.arr_bitmask))
                 for i in range(field.arr_len):
-                    result.append(read_field(bytes, field.field)
+                    result.append(read_field(b, field.field)
                                   if access_bit(mask, i) else None)
             else:
-                arr_len = eval_arr_len(field, bytes, root_data)
+                arr_len = eval_arr_len(field, b, root_data)
                 for _ in range(arr_len):
-                    result.append(read_field(bytes, field.field))
+                    result.append(read_field(b, field.field))
             return result
         case 'object':
             result = {}
             for key, f in field.fields.items():
-                result[key] = read_field(bytes, f, root_data if root_data else result)
+                result[key] = read_field(b, f, root_data if root_data else result)
             return types.SimpleNamespace(**result)
         case 'bytes':
-            arr_len = eval_arr_len(field, bytes, root_data)
-            return bytes.read(arr_len)
+            arr_len = eval_arr_len(field, b, root_data)
+            return b.read(arr_len)
         case 'varstr':
-            str_len = bytes.read_packed(field.str_len)
-            return bytes.read_packed(f'{str_len}s')
+            str_len = b.read_packed(field.str_len)
+            return b.read_packed(f'{str_len}s')
         case _:
-            val = bytes.read_packed(field.type)
-            if type(val) == str:
+            val = b.read_packed(field.type)
+            # Convert string formats (ex: '64s') to a string value truncated at the last null byte.
+            if type(val) == bytes and field.type != 'bytes':
                 val = val.rstrip(b'\x00').decode('latin1')
             return val
 
