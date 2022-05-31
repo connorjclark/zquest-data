@@ -1,3 +1,4 @@
+import enum
 import os
 import unittest
 import hashlib

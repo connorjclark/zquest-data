@@ -5,7 +5,7 @@ from src.zquest.bytes import Bytes
 
 class TestBytes(unittest.TestCase):
     def test_write_byte(self):
-        b = Bytes(io.BytesIO())
+        b = Bytes(bytearray())
         b.write_byte(0)
         b.write_byte(1)
         b.write_byte(2)

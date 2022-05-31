@@ -5,59 +5,73 @@ from typing import Any
 
 
 class Bytes:
-    def __init__(self, f: IOBase):
-        self.f = f
-
-        f.seek(0, os.SEEK_END)
-        self.length = f.tell()
-        f.seek(0)
+    def __init__(self, data: bytearray):
+        self.offset = 0
+        self.data = data
+        self.length = len(data)
 
     def bytes_read(self):
-        return self.f.tell()
+        return self.offset
 
     def advance(self, n: int):
-        self.f.seek(n, 1)
+        self.offset += n
 
     def rewind(self):
-        self.f.seek(0)
+        self.offset = 0
 
     def has_bytes(self) -> bool:
-        more_bytes = self.f.read(1) != b''
-        if more_bytes:
-            self.f.seek(-1, 1)
-        return more_bytes
+        self.length = len(self.data)
+        return self.length > self.offset
 
     def peek(self, n: int):
-        bytes = self.f.read(n)
-        self.f.seek(-len(bytes), 1)
+        bytes = self.read(n)
+        self.advance(-len(bytes))
         return bytes
 
     def read(self, n: int) -> bytes:
-        return self.f.read(n)
+        result = bytes(self.data[self.offset:self.offset+n])
+        self.offset += n
+        # TODO: 1st-latest.qst rule section should be 100 bytes, but is only 26?
+        # old file-based (self.f.read) code made this no problem, but new code
+        # needs to bound the offset to self.length to prevent noisy errors
+        # should fix this.
+        if n == 100:
+            self.offset = min(self.offset, self.length)
+        return result
 
-    def write(self, n: int):
-        self.f.write(n)
+    def write(self, n: Any):
+        if type(n) == bytearray or type(n) == bytes or type(n) == list:
+            self.data[self.offset:self.offset] += n
+            self.offset += len(n)
+        else:
+            self.data[self.offset:self.offset] += bytearray([n])
+            self.offset += 1
 
     def read_packed(self, format: str) -> Any:
-        return unpack(format, self.read(calcsize(format)))[0]
+        result = unpack_from(format, self.data, self.offset)[0]
+        self.offset += calcsize(format)
+        return result
 
     def write_packed(self, format: str, val: Any):
-        self.f.write(pack(format, val))
+        result = pack(format, val)
+        result_len = len(result)
+        self.data[self.offset:self.offset+result_len] = result
+        self.offset += result_len
 
     def read_byte(self) -> int:
-        return unpack('B', self.read(1))[0]
+        return self.read_packed('B')
 
     def write_byte(self, val):
-        self.f.write(pack('B', val))
+        self.write_packed('B', val)
 
     def read_int(self) -> int:
-        return unpack('<H', self.read(2))[0]
+        return self.read_packed('<H')
 
     def write_int(self, val):
-        self.f.write(pack('<H', val))
+        self.write_packed('<H', val)
 
     def read_long(self) -> int:
-        return unpack('<I', self.read(4))[0]
+        return self.read_packed('<I')
 
     def write_long(self, val):
-        self.f.write(pack('<I', val))
+        self.write_packed('<I', val)

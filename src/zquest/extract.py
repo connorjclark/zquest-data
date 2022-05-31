@@ -19,7 +19,7 @@ def assert_equal(expected, actual):
 class ZeldaClassicReader:
     def __init__(self, path):
         with open(path, 'rb') as f:
-            self.b = Bytes(io.BytesIO(f.read()))
+            self.b = Bytes(bytearray(f.read()))
 
         self.path = path
         self.section_fields = {}
@@ -64,8 +64,7 @@ class ZeldaClassicReader:
             decoded = f.read()
 
         # remake the byte reader with the decoded data
-        self.b.f.close()
-        self.b = Bytes(io.BytesIO(decoded))
+        self.b = Bytes(bytearray(decoded))
 
         self.preamble = self.b.read(29)
         preambles = [
@@ -167,7 +166,7 @@ class ZeldaClassicReader:
             size = self.b.length - self.b.bytes_read()
 
         self.section_lengths[id] = size
-        section_bytes = Bytes(io.BytesIO(self.b.read(size)))
+        section_bytes = Bytes(bytearray(self.b.read(size)))
         if id in sections:
             ok = True
             logging.debug(f'{id} {section_version}\t{section_cversion}\t{size}')

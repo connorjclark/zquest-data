@@ -184,15 +184,15 @@ def serialize(reader: ZeldaClassicReader) -> bytearray:
     return raw_byte_array
 
 
-def serialize_section(reader: ZeldaClassicReader, id: bytes) -> bytes:
-    bytes = Bytes(io.BytesIO())
+def serialize_section(reader: ZeldaClassicReader, id: bytes) -> bytearray:
+    bytes = Bytes(bytearray())
 
     assert len(id) == 4
     bytes.write(id)
     bytes.write_int(reader.section_versions[id])
     bytes.write_int(reader.section_cversions[id])
     bytes.write_long(0)
-    assert len(bytes.f.getvalue()) == 12
+    assert bytes.bytes_read() == 12
 
     match id:
         case SECTION_IDS.HEADER:
@@ -228,10 +228,13 @@ def serialize_section(reader: ZeldaClassicReader, id: bytes) -> bytes:
         case _:
             raise Exception(f'unexpected id {id}')
 
-    bytes.f.seek(8)
-    bytes.write_long(len(bytes.f.getvalue()) - 12)
+    bytes.offset = 8
+    # TODO: this is the only place that Bytes needs to be able to "overwrite" itself,
+    # as opposed to appending at the end. Might be able to simplify Bytes if overwriting
+    # was handled here directly.
+    bytes.write_long(len(bytes.data) - 12)
 
-    return bytes.f.getvalue()
+    return bytes.data
 
 
 def write_field(bytes: Bytes, data: Any, field: F):
