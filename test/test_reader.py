@@ -35,13 +35,12 @@ class TestReader(unittest.TestCase):
             'test_data/firebird.qst',
             'test_data/bs/2.5/NewBS 3.1 - 1st Quest.qst',
             'test_data/1st-latest.qst',
+            'test_data/InsertQuestTitleHere.qst',
         ]
         for input in inputs:
             reader = ZeldaClassicReader(input)
             reader.read_qst()
             reader.save_qst('.tmp/test.qst')
-            reader = ZeldaClassicReader('.tmp/test.qst')
-            reader.read_qst()
 
             original_hash = hashlib.md5(Path(input).read_bytes()).hexdigest()
             copy_hash = hashlib.md5(Path('.tmp/test.qst').read_bytes()).hexdigest()
