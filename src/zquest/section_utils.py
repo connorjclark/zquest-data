@@ -273,6 +273,22 @@ def read_section(bytes: Bytes, id: bytes, version: Version, sversion: int) -> Tu
     return read_field(bytes, field), field
 
 
+def validate_struct_format(format: str) -> str:
+    # Only explicit byte order notation allowed is '>' and '!' (big-endian).
+    # '<' (little-endian) is assumed by default, and not allowed explicitly.
+    if format[0] == '@' or format[0] == '=':
+        raise Exception(f'bad field: {format}. Don\'t use native byte order')
+    if format[0] == '<':
+        raise Exception(f'bad field: {format}. Drop <, little-endian is assumed')
+    if not re.match(r'\d+s', format) and format[0] != '>' and format[0] != '!':
+        format = f'<{format}'
+    try:
+        calcsize(format)
+        return format
+    except:
+        raise Exception(f'invalid field type: {format}')
+
+
 def validate_field(field: F, seen=[]):
     if field in seen:
         return
@@ -288,22 +304,15 @@ def validate_field(field: F, seen=[]):
         case 'bytes':
             if field.arr_len == None:
                 raise Exception('bytes field type must have an arr_len')
+            elif type(field.arr_len) == str:
+                field.arr_len = validate_struct_format(field.arr_len)
         case 'varstr':
             if type(field.str_len) != str:
-                raise Exception('varstr field type must have a len')
+                raise Exception('varstr field type must have a str_len')
+            else:
+                field.str_len = validate_struct_format(field.str_len)
         case _:
-            # Only explicit byte order notation allowed is '>' and '!' (big-endian).
-            # '<' (little-endian) is assumed by default, and not allowed explicitly.
-            if field.type[0] == '@' or field.type[0] == '=':
-                raise Exception(f'bad field: {field.type}. Don\'t use native byte order')
-            if field.type[0] == '<':
-                raise Exception(f'bad field: {field.type}. Drop <, little-endian is assumed')
-            if not re.match(r'\d+s', field.type) and field.type[0] != '>' and field.type[0] != '!':
-                field.type = f'<{field.type}'
-            try:
-                calcsize(field.type)
-            except:
-                raise Exception(f'invalid field type: {field.type}')
+            field.type = validate_struct_format(field.type)
 
 
 def get_section_field(id: bytes, version: Version, sversion: int) -> F:
