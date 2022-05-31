@@ -28,7 +28,7 @@ class TestReader(unittest.TestCase):
         self.assertEqual(reader.combos[0].tile, 316)
 
     def test_read_and_write_qst_no_delta(self):
-        inputs = [
+        in_files = [
             'test_data/1st.qst',
             'test_data/Classic XD.qst',
             'test_data/lost_isle.qst',
@@ -37,14 +37,25 @@ class TestReader(unittest.TestCase):
             'test_data/1st-latest.qst',
             'test_data/InsertQuestTitleHere.qst',
         ]
-        for input in inputs:
-            reader = ZeldaClassicReader(input)
+        for in_file in in_files:
+            reader = ZeldaClassicReader(in_file)
             reader.read_qst()
             reader.save_qst('.tmp/test.qst')
 
-            original_hash = hashlib.md5(Path(input).read_bytes()).hexdigest()
+            original_hash = hashlib.md5(Path(in_file).read_bytes()).hexdigest()
             copy_hash = hashlib.md5(Path('.tmp/test.qst').read_bytes()).hexdigest()
             self.assertEqual(original_hash, copy_hash)
+
+            for id, ok in reader.section_ok.items():
+                # TODO fix these sections
+                if in_file == 'test_data/InsertQuestTitleHere.qst':
+                    if id in [b'INIT', b'GUY ']:
+                        continue
+                if in_file == 'test_data/1st-latest.qst':
+                    if id in [b'INIT', b'CSET']:
+                        continue
+                if not ok:
+                    raise Exception(f'{in_file}: failed to parse section {id}')
 
     def test_modify_qst(self):
         reader = ZeldaClassicReader('test_data/1st.qst')
