@@ -155,7 +155,7 @@ def read_field(bytes: Bytes, field: F, root_data: Any = None):
             return bytes.read_packed(f'{str_len}s')
         case _:
             val = bytes.read_packed(field.type)
-            if re.match(r'\d+s', field.type):
+            if type(val) == str:
                 val = val.rstrip(b'\x00').decode('latin1')
             return val
 
