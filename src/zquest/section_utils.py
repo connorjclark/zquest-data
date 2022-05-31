@@ -22,6 +22,7 @@ from .sections.wpn import get_wpn_field
 from .sections.cset import get_cset_field
 from .sections.rule import get_rule_field
 from .sections.init import get_init_field
+from .sections.str import get_str_field
 from .version import Version
 
 if TYPE_CHECKING:
@@ -149,6 +150,9 @@ def read_field(bytes: Bytes, field: F, root_data: Any = None):
         case 'bytes':
             arr_len = eval_arr_len(field, bytes, root_data)
             return bytes.read(arr_len)
+        case 'varstr':
+            str_len = bytes.read_packed(field.str_len)
+            return bytes.read_packed(f'{str_len}s')
         case _:
             val = bytes.read_packed(field.type)
             if re.match(r'\d+s', field.type):
@@ -218,6 +222,8 @@ def serialize_section(reader: ZeldaClassicReader, id: bytes) -> bytes:
             write_field(bytes, reader.rules, reader.section_fields[id])
         case SECTION_IDS.INITDATA:
             write_field(bytes, reader.init, reader.section_fields[id])
+        case SECTION_IDS.STRINGS:
+            write_field(bytes, reader.strings, reader.section_fields[id])
         case _:
             raise Exception(f'unexpected id {id}')
 
@@ -253,6 +259,9 @@ def write_field(bytes: Bytes, data: Any, field: F):
             if type(field.arr_len) == str:
                 bytes.write_packed(field.arr_len, len(data))
             bytes.write(data)
+        case 'varstr':
+            bytes.write_packed(field.str_len, len(data))
+            bytes.write(data)
         case _:
             if type(data) == str:
                 data = data.encode()
@@ -279,6 +288,9 @@ def validate_field(field: F, seen=[]):
         case 'bytes':
             if field.arr_len == None:
                 raise Exception('bytes field type must have an arr_len')
+        case 'varstr':
+            if type(field.str_len) != str:
+                raise Exception('varstr field type must have a len')
         case _:
             # Only explicit byte order notation allowed is '>' and '!' (big-endian).
             # '<' (little-endian) is assumed by default, and not allowed explicitly.
@@ -324,6 +336,8 @@ def get_section_field(id: bytes, version: Version, sversion: int) -> F:
             field = get_rule_field(version, sversion)
         case SECTION_IDS.INITDATA:
             field = get_init_field(version, sversion)
+        case SECTION_IDS.STRINGS:
+            field = get_str_field(version, sversion)
         case _:
             raise Exception(f'unexpected id {id}')
 

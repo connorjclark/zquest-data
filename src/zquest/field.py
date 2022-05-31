@@ -18,7 +18,7 @@ class F:
     fields: Optional[Dict[str, Union['F', str]]] = None  # only used for object type
     arr_len: Optional[Union[int, str, Callable]] = None
     arr_bitmask: Optional[str] = None
-    str_len: Optional[int] = None
+    str_len: Optional[str] = None  # only used for varstr type
 
     def __repr__(self):
         without_nones = convert_dict_for_repr(self.__dict__)
