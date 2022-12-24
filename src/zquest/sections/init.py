@@ -64,6 +64,30 @@ def get_init_field(version: Version, sversion: int) -> F:
             'ss_flags': 'H',
         } if sversion > 3 else {}),
 
+        **({
+            'moving_fairy_hearts': 'B',
+            'moving_fairy_heart_percent': 'B',
+        } if sversion > 4 and sversion < 15 else {}),
+
+        'old_quiver_family': 'B' if sversion > 5 and sversion < 10 else None,
+
+        **({
+            'stationary_fairy_hearts': 'B',
+            'stationary_fairy_heart_percent': 'B',
+            'moving_fairy_magic': 'B',
+            'moving_fairy_magic_percent': 'B',
+            'stationary_fairy_magic': 'B',
+            'stationary_fairy_magic_percent': 'B',
+            'blue_potion_hearts': 'B',
+            'blue_potion_heart_percent': 'B',
+            'red_potion_hearts': 'B',
+            'red_potion_heart_percent': 'B',
+            'blue_potion_magic': 'B',
+            'blue_potion_magic_percent': 'B',
+            'red_potion_magic': 'B',
+            'red_potion_magic_percent': 'B',
+        } if sversion > 6 and sversion < 15 else {}),
+
         'subscreen_style': 'B' if sversion > 6 else None,
         'use_custom_sfx': 'B' if sversion > 7 else None,
         'max_rupees': 'H' if sversion > 8 else None,
@@ -83,7 +107,7 @@ def get_init_field(version: Version, sversion: int) -> F:
             'bombs': 'H',
             'super_bombs': 'H',
             'max_bombs': 'H',
-            'max_sbombs': 'H',
+            'max_super_bombs': 'H',
             'arrows': 'H',
             'max_arrows': 'H',
         } if sversion >= 19 else {}),
@@ -125,4 +149,15 @@ def get_init_field(version: Version, sversion: int) -> F:
         'bunny_ltm': 'I' if sversion > 29 else None,
         'switch_hook_style': 'B' if sversion > 30 else None,
         'magic_drain_rate': 'B' if sversion > 31 else None,
+
+        **({
+            'generic_scripts': F(type='array', arr_len='H', arr_bitmask=4, field=F(type='object', fields={
+                '_padding': 'B',
+                'exit_state': 'H',
+                'reload_state': 'H',
+                'initd': F(arr_len=8, type='I'),
+                'data': F(arr_len='H', type='I'),
+                'event_state': 'I',
+            })),
+        } if sversion > 32 else {}),
     })
