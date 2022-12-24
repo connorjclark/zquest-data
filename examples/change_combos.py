@@ -1,4 +1,3 @@
-import context
 import os
 
 from zquest.extract import ZeldaClassicReader

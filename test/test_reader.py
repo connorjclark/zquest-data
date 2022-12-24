@@ -5,7 +5,7 @@ import hashlib
 from pathlib import Path
 from copy import deepcopy
 
-from src.zquest.extract import ZeldaClassicReader
+from zquest.extract import ZeldaClassicReader
 
 os.makedirs('.tmp', exist_ok=True)
 

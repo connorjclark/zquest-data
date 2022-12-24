@@ -1,6 +1,5 @@
 import unittest
-import io
-from src.zquest.bytes import Bytes
+from zquest.bytes import Bytes
 
 
 class TestBytes(unittest.TestCase):

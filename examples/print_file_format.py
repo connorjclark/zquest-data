@@ -1,4 +1,3 @@
-import context
 import argparse
 
 from zquest.section_utils import SECTION_IDS, get_section_field

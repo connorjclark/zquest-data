@@ -1,4 +1,3 @@
-import context
 import argparse
 from zquest.extract import ZeldaClassicReader
 

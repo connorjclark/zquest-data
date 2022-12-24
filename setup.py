@@ -37,4 +37,9 @@ setup(
     install_requires=['numpy', 'Pillow'],
     ext_modules=cythonize([decode_extension], language_level='3'),
     cmdclass={'install': MyInstall},
+    package_dir={
+        'zquest': 'src/zquest',
+        'zquest.sections': 'src/zquest/sections',
+    },
+    packages=['zquest', 'zquest.sections'],
 )

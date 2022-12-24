@@ -1,12 +1,7 @@
 import sys
 
-if 'unittest' in sys.modules.keys():
-    from src.zquest.extract import ZeldaClassicReader
-    from src.zquest.constants import combo_type_names
-else:
-    import context
-    from zquest.extract import ZeldaClassicReader
-    from zquest.constants import combo_type_names
+from zquest.extract import ZeldaClassicReader
+from zquest.constants import combo_type_names
 
 import math
 from typing import Any, List, Tuple
