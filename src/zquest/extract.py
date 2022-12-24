@@ -78,17 +78,29 @@ class ZeldaClassicReader:
         if self.preamble not in preambles:
             raise Exception(f'unexpected preamble: {self.preamble}')
 
-        if self.preamble == preambles[0]:
-            # Really old qst files use a crappy format.
-            # https://github.com/ArmageddonGames/ZeldaClassic/blob/2.55-master/src/qst.cpp#L20934
-            self.read_header(self.b, None, None)
-            # TODO: probably won't ever bother reading quests this old
-            log.warning(
-                'qst file is pre-1.93, and is too old to read more than the header section')
-            return
-
         # The preamble is actually 31 bytes, but we ignore the last two for comparison purposes above.
         self.b.advance(2)
+
+        if self.preamble == preambles[0]:
+            # Really old qst files use a crappy format.
+            # https://github.com/ArmageddonGames/ZQuestClassic/blob/6b0abe1f8a0f280ddc53647f2b9f5f2352b950eb/src/qst.cpp#L20934
+            self.read_header(self.b, None, None)
+            self.read_rules(self.b, 0, 0)
+            # TODO read more of old quests
+            # self.read_str(self.b, 0, 0)
+            # self.read_doors(self.b, 0, 0)
+            # self.read_dmaps(self.b, 0, 0)
+            # self.read_misc(self.b, 0, 0)
+            # self.read_items(self.b, 0, 0)
+            # self.read_weapons(self.b, 0, 0)
+            # self.read_guys(self.b, 0, 0)
+            # self.read_maps(self.b, 0, 0)
+            # self.read_combos(self.b, 0, 0)
+            # self.read_color(self.b, 0, 0)
+            # self.read_tiles(self.b, 0, 0)
+            log.warning(
+                'qst file is pre-1.93, and is too old to read more than the header and rules sections')
+            return
 
         if self.b.peek(4) != SECTION_IDS.HEADER:
             raise Exception('could not find HDR section')
@@ -131,6 +143,9 @@ class ZeldaClassicReader:
     def read_section(self):
         offset = self.b.bytes_read()
         id, section_version, section_cversion = self.read_section_header()
+        if id == SECTION_IDS.RULES and section_version > 16:
+            # TODO do something with this
+            compatrule_version = self.b.read_long()
         size = self.b.read_long()
 
         # Sometimes there is garbage data between sections.

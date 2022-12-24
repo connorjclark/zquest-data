@@ -25,7 +25,7 @@ class BitField:
     def get_indices(self):
         indices = []
         for i in range(len(self.bits) * 8):
-            if bit(self.rules, i):
+            if bit(self.bits, i):
                 indices.append(i)
         return indices
 
