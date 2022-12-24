@@ -11,6 +11,8 @@ from .version import Version
 from .bit_field import BitField
 from . import constants
 
+log = logging.getLogger('zquest')
+
 
 def assert_equal(expected, actual):
     if expected != actual:
@@ -80,7 +82,7 @@ class ZeldaClassicReader:
             # https://github.com/ArmageddonGames/ZeldaClassic/blob/2.55-master/src/qst.cpp#L20934
             self.read_header(self.b, None, None)
             # TODO: probably won't ever bother reading quests this old
-            logging.warning(
+            log.warning(
                 'qst file is pre-1.93, and is too old to read more than the header section')
             return
 
@@ -116,8 +118,8 @@ class ZeldaClassicReader:
             self.version = Version(self.header.zelda_version, self.header.build)
         else:
             self.version = Version(self.header.zelda_version)
-        logging.debug(self.version)
-        logging.debug(self.header.title)
+        log.debug(self.version)
+        log.debug(self.header.title)
 
     def read_section_header(self):
         id = bytes(self.b.read(4))
@@ -132,7 +134,7 @@ class ZeldaClassicReader:
 
         # Sometimes there is garbage data between sections.
         if not re.match("\w{3,4}", id.decode("ascii", errors="ignore")):
-            logging.warning(f"garbage section id: {id}, skipping ahead some bytes...")
+            log.warning(f"garbage section id: {id}, skipping ahead some bytes...")
             while id not in vars(SECTION_IDS).values():
                 self.b.advance(-12 + 1)
                 offset = self.b.bytes_read()
@@ -162,32 +164,32 @@ class ZeldaClassicReader:
         }
 
         if size > self.b.length - self.b.bytes_read():
-            logging.warning('section size is bigger than rest of data, clamping')
+            log.warning('section size is bigger than rest of data, clamping')
             size = self.b.length - self.b.bytes_read()
 
         self.section_lengths[id] = size
         section_bytes = Bytes(self.b.read(size))
         if id in sections:
             ok = True
-            logging.debug(f'{id} {section_version}\t{section_cversion}\t{size}')
+            log.debug(f'{id} {section_version}\t{section_cversion}\t{size}')
 
             try:
                 sections[id](section_bytes, section_version, section_cversion)
             except Exception as e:
                 ok = False
                 error = "".join(traceback.TracebackException.from_exception(e).format())
-                logging.error(error)
+                log.error(error)
                 self.errors.append(error)
 
             remaining = size - section_bytes.bytes_read()
             if remaining != 0:
                 ok = False
-                logging.warning(
+                log.warning(
                     '%r section did not consume expected number of bytes. remaining: %r', id, remaining)
 
             self.section_ok[id] = ok
         else:
-            logging.debug('unhandled section %r %r', id, size)
+            log.debug('unhandled section %r %r', id, size)
             pass
 
     def read_gpak(self, section_version, section_cversion):

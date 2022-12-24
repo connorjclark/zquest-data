@@ -27,6 +27,8 @@ from .version import Version
 if TYPE_CHECKING:
     from .extract import ZeldaClassicReader
 
+log = logging.getLogger('zquest')
+
 # https://github.com/ArmageddonGames/ZeldaClassic/blob/30c9e17409304390527fcf84f75226826b46b819/src/zdefs.h#L155
 SECTION_IDS = types.SimpleNamespace()
 SECTION_IDS.HEADER = b'HDR '
@@ -171,7 +173,7 @@ def serialize(reader: ZeldaClassicReader) -> bytearray:
 
     for id in ids:
         if not reader.section_ok[id]:
-            logging.warning(
+            log.warning(
                 'skipping writing updated section for %r because had errors during reading', id)
             continue
 
