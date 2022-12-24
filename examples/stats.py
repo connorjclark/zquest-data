@@ -37,10 +37,7 @@ def get_qst_stats(in_path: str):
     reader = ZeldaClassicReader(in_path)
     reader.read_qst()
 
-    quest_rule_numbers = []
-    for i in range(len(reader.rules) * 8):
-        if bit(reader.rules, i):
-            quest_rule_numbers.append(i)
+    quest_rules = reader.get_quest_rules().get_values()
 
     most_unique_combos_on_screen = {'val': 0, 'screen': None}
     num_enemies = 0
@@ -84,7 +81,7 @@ def get_qst_stats(in_path: str):
         'num_screen_flags': num_screen_flags,
         'num_screen_items': num_screen_items,
         'num_valid_screens': num_valid_screens,
-        'quest_rules': quest_rule_numbers,
+        'quest_rules': quest_rules,
         'screen_flags': screen_flags,
     }
 

@@ -8,6 +8,8 @@ from decode_wrapper import py_decode, py_encode
 from .pretty_json import pretty_json_format
 from .section_utils import SECTION_IDS, read_section, serialize
 from .version import Version
+from .bit_field import BitField
+from . import constants
 
 
 def assert_equal(expected, actual):
@@ -337,3 +339,6 @@ class ZeldaClassicReader:
             'strings': self.strings,
         }
         return pretty_json_format(data)
+
+    def get_quest_rules(self):
+        return BitField(constants.quest_rules, self.rules)
