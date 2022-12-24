@@ -3,6 +3,7 @@ import pathlib
 import logging
 from pprint import pprint
 from zquest.extract import ZeldaClassicReader
+from zquest.section_utils import SECTION_IDS
 
 # Number of tiles in a screen
 screen_width = 16
@@ -34,7 +35,14 @@ def bit(flags: bytes, index: int) -> bool:
 
 
 def get_qst_stats(in_path: str):
-    reader = ZeldaClassicReader(in_path)
+    reader = ZeldaClassicReader(in_path, {
+        'only_sections': [
+            SECTION_IDS.COMBOS,
+            SECTION_IDS.DMAPS,
+            SECTION_IDS.MAPS,
+            SECTION_IDS.RULES,
+        ],
+    })
     reader.read_qst()
 
     quest_rules = reader.get_quest_rules().get_values()

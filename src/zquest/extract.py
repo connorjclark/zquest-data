@@ -1,5 +1,4 @@
 import logging
-import os
 import re
 import tempfile
 import traceback
@@ -20,11 +19,12 @@ def assert_equal(expected, actual):
 
 
 class ZeldaClassicReader:
-    def __init__(self, path):
+    def __init__(self, path, opts={}):
         with open(path, 'rb') as f:
             self.b = Bytes(bytearray(f.read()))
 
         self.path = path
+        self.opts = opts
         self.section_fields = {}
         self.section_versions = {}
         self.section_cversions = {}
@@ -170,8 +170,13 @@ class ZeldaClassicReader:
 
         self.section_lengths[id] = size
         section_bytes = Bytes(self.b.read(size))
+        # TODO: lazily reading these sections might be better.
+        only_sections = self.opts['only_sections'] if 'only_sections' in self.opts else None
         if id in sections:
             ok = True
+            if only_sections and id not in only_sections and id != SECTION_IDS.HEADER:
+                return
+
             log.debug(f'{id} {section_version}\t{section_cversion}\t{size}')
 
             try:
@@ -191,7 +196,6 @@ class ZeldaClassicReader:
             self.section_ok[id] = ok
         else:
             log.debug('unhandled section %r %r', id, size)
-            pass
 
     def read_gpak(self, section_version, section_cversion):
         pass
