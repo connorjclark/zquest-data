@@ -52,19 +52,20 @@ class ZeldaClassicReader:
         # read the header and decompress the data
         # https://github.com/ArmageddonGames/ZeldaClassic/blob/023dd17eaf6a969f47650cb6591cedd0baeaab64/src/zsys.cpp#L676
 
-        outpath = 'output/decoded.data'
-        os.makedirs('output', exist_ok=True)
-        err, method, key = py_decode(self.path, outpath)
-        # Only bother with the method or stupid key (which we can set to be anything)
-        # so the _exact_ same bytes can be written back and verify reading and
-        # writing works without error.
-        self.method = method
-        self.key = key
-        if err != 0:
-            raise Exception(f'error decoding: {err}')
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            outpath = f'{tmpdirname}/decoded.data'
+            err, method, key = py_decode(self.path, outpath)
 
-        with open(outpath, "rb") as f:
-            decoded = f.read()
+            # Only bother with the method or stupid key (which we can set to be anything)
+            # so the _exact_ same bytes can be written back and verify reading and
+            # writing works without error.
+            self.method = method
+            self.key = key
+            if err != 0:
+                raise Exception(f'error decoding: {err}')
+
+            with open(outpath, "rb") as f:
+                decoded = f.read()
 
         # remake the byte reader with the decoded data
         self.b = Bytes(bytearray(decoded))
