@@ -31,6 +31,7 @@ class TestReader(unittest.TestCase):
     def test_read_and_write_qst_no_delta(self):
         in_files = [
             'test_data/1st.qst',
+            'test_data/Eckland.qst',
             'test_data/Classic XD.qst',
             'test_data/lost_isle.qst',
             'test_data/firebird.qst',
@@ -41,6 +42,10 @@ class TestReader(unittest.TestCase):
         for in_file in in_files:
             reader = ZeldaClassicReader(in_file)
             reader.read_qst()
+            if in_file == 'test_data/Eckland.qst':
+                # TODO support saving pre-1.93 quests
+                continue
+
             reader.save_qst('.tmp/test.qst')
 
             original_hash = hashlib.md5(Path(in_file).read_bytes()).hexdigest()

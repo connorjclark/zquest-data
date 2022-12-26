@@ -46,7 +46,7 @@ SECTION_IDS.WEAPONS = b'WPN '
 SECTION_IDS.COLORS = b'MCLR'
 SECTION_IDS.ICONS = b'ICON'
 SECTION_IDS.GRAPHICSPACK = b'GPAK'
-SECTION_IDS.INITDATA = b'INIT'
+SECTION_IDS.INIT = b'INIT'
 SECTION_IDS.GUYS = b'GUY '
 SECTION_IDS.MIDIS = b'MIDI'
 SECTION_IDS.CHEATS = b'CHT '
@@ -58,6 +58,7 @@ SECTION_IDS.ITEMDROPSETS = b'DROP'
 SECTION_IDS.FAVORITES = b'FAVS'
 SECTION_IDS.FFSCRIPT = b'FFSC'
 SECTION_IDS.SFX = b'SFX '
+SECTION_IDS.ZINFO = b'ZINF'
 
 
 def access_bit(data: bytearray, index: int) -> int:
@@ -167,9 +168,9 @@ def serialize(reader: ZeldaClassicReader) -> bytearray:
     raw_byte_array = reader.b.data.copy()
     ids = list(reader.section_fields)
 
-    # Modify in the same order sections were found in the original file,
+    # Modify in the opposite order sections were found in the original file,
     # to avoid messing up the offsets of unprocessed sections.
-    ids.sort(key=lambda id: -reader.section_offsets[id])
+    ids.sort(key=lambda id: -reader.section_headers[id].data_offset)
 
     for id in ids:
         if not reader.section_ok[id]:
@@ -177,9 +178,10 @@ def serialize(reader: ZeldaClassicReader) -> bytearray:
                 'skipping writing updated section for %r because had errors during reading', id)
             continue
 
+        section_header = reader.section_headers[id]
         section_raw_bytes = serialize_section(reader, id)
-        section_start = reader.section_offsets[id]
-        section_end = section_start + reader.section_lengths[id] + 12
+        section_start = section_header.offset
+        section_end = section_header.data_offset + section_header.size
         raw_byte_array[section_start:section_end] = section_raw_bytes
 
     return raw_byte_array
@@ -190,10 +192,13 @@ def serialize_section(reader: ZeldaClassicReader, id: bytes) -> bytearray:
 
     assert len(id) == 4
     bytes.write(id)
-    bytes.write_int(reader.section_versions[id])
-    bytes.write_int(reader.section_cversions[id])
+    bytes.write_int(reader.section_headers[id].version)
+    bytes.write_int(reader.section_headers[id].cversion)
+    if reader.section_headers[id].extra is not None:
+        bytes.write_long(reader.section_headers[id].extra)
+    size_index = bytes.length
     bytes.write_long(0)
-    assert len(bytes.data) == 12
+    header_size = bytes.length
 
     match id:
         case SECTION_IDS.HEADER:
@@ -222,7 +227,7 @@ def serialize_section(reader: ZeldaClassicReader, id: bytes) -> bytearray:
             write_field(bytes, reader.csets, reader.section_fields[id])
         case SECTION_IDS.RULES:
             write_field(bytes, reader.rules, reader.section_fields[id])
-        case SECTION_IDS.INITDATA:
+        case SECTION_IDS.INIT:
             write_field(bytes, reader.init, reader.section_fields[id])
         case SECTION_IDS.STRINGS:
             write_field(bytes, reader.strings, reader.section_fields[id])
@@ -230,8 +235,8 @@ def serialize_section(reader: ZeldaClassicReader, id: bytes) -> bytearray:
             raise Exception(f'unexpected id {id}')
 
     temp_b = Bytes(bytearray())
-    temp_b.write_long(len(bytes.data) - 12)
-    bytes.data[8:12] = temp_b.data
+    temp_b.write_long(len(bytes.data) - header_size)
+    bytes.data[size_index:size_index+4] = temp_b.data
 
     return bytes.data
 
@@ -346,7 +351,7 @@ def get_section_field(id: bytes, version: Version, sversion: int) -> F:
             field = get_cset_field(version, sversion)
         case SECTION_IDS.RULES:
             field = get_rule_field(version, sversion)
-        case SECTION_IDS.INITDATA:
+        case SECTION_IDS.INIT:
             field = get_init_field(version, sversion)
         case SECTION_IDS.STRINGS:
             field = get_str_field(version, sversion)

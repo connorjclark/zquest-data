@@ -2,6 +2,8 @@ import logging
 import re
 import tempfile
 import traceback
+from typing import Dict
+from dataclasses import dataclass
 from .bytes import Bytes
 from decode_wrapper import py_decode, py_encode
 from .pretty_json import pretty_json_format
@@ -18,18 +20,43 @@ def assert_equal(expected, actual):
         raise Exception(f'expected {expected} but got {actual}')
 
 
+@dataclass
+class SectionHeader:
+    id: bytes
+    version: int
+    cversion: int
+    offset: int
+    data_offset: int
+    size: int
+    extra: int
+
+
 class ZeldaClassicReader:
     def __init__(self, path, opts={}):
+        self.sections = {
+            SECTION_IDS.HEADER: self.read_header,
+            SECTION_IDS.TILES: self.read_tiles,
+            SECTION_IDS.COMBOS: self.read_combos,
+            SECTION_IDS.CSETS: self.read_csets,
+            SECTION_IDS.DMAPS: self.read_dmaps,
+            SECTION_IDS.MAPS: self.read_maps,
+            SECTION_IDS.GUYS: self.read_guys,
+            SECTION_IDS.WEAPONS: self.read_weapons,
+            SECTION_IDS.LINKSPRITES: self.read_link_sprites,
+            SECTION_IDS.ITEMS: self.read_items,
+            SECTION_IDS.MIDIS: self.read_midis,
+            SECTION_IDS.DOORS: self.read_doors,
+            SECTION_IDS.RULES: self.read_rules,
+            SECTION_IDS.INIT: self.read_init,
+            SECTION_IDS.STRINGS: self.read_str,
+        }
+
         with open(path, 'rb') as f:
             self.b = Bytes(bytearray(f.read()))
 
         self.path = path
         self.opts = opts
         self.section_fields = {}
-        self.section_versions = {}
-        self.section_cversions = {}
-        self.section_offsets = {}
-        self.section_lengths = {}
         self.section_ok = {}
         self.errors = []
         self.combos = None
@@ -81,23 +108,20 @@ class ZeldaClassicReader:
         # The preamble is actually 31 bytes, but we ignore the last two for comparison purposes above.
         self.b.advance(2)
 
-        if self.preamble == preambles[0]:
+        self.is_too_old = self.preamble == preambles[0]
+        if self.is_too_old:
             # Really old qst files use a crappy format.
             # https://github.com/ArmageddonGames/ZQuestClassic/blob/6b0abe1f8a0f280ddc53647f2b9f5f2352b950eb/src/qst.cpp#L20934
-            self.read_header(self.b, None, None)
-            self.read_rules(self.b, 0, 0)
+            self.section_headers = {}
+
             # TODO read more of old quests
-            # self.read_str(self.b, 0, 0)
-            # self.read_doors(self.b, 0, 0)
-            # self.read_dmaps(self.b, 0, 0)
-            # self.read_misc(self.b, 0, 0)
-            # self.read_items(self.b, 0, 0)
-            # self.read_weapons(self.b, 0, 0)
-            # self.read_guys(self.b, 0, 0)
-            # self.read_maps(self.b, 0, 0)
-            # self.read_combos(self.b, 0, 0)
-            # self.read_color(self.b, 0, 0)
-            # self.read_tiles(self.b, 0, 0)
+            for id in [SECTION_IDS.HEADER, SECTION_IDS.RULES]:
+                self.section_headers[id] = SectionHeader(id=id, version=0, cversion=0,
+                                                         offset=self.b.offset, data_offset=self.b.offset,
+                                                         size=0, extra=None)
+                self.sections[id](self.b, 0, 0)
+                self.section_ok[id] = True
+
             log.warning(
                 'qst file is pre-1.93, and is too old to read more than the header and rules sections')
             return
@@ -105,17 +129,74 @@ class ZeldaClassicReader:
         if self.b.peek(4) != SECTION_IDS.HEADER:
             raise Exception('could not find HDR section')
 
-        # actually read the data now
+        logging.debug('finding sections ...')
+        self.section_headers = self.find_sections()
+
+        first_section_id = next(iter(self.section_headers), None)
+        if first_section_id != SECTION_IDS.HEADER:
+            raise Exception(f'expected HDR to be first section, but got {first_section_id}')
+
+        only_sections = self.opts['only_sections'] if 'only_sections' in self.opts else None
+        for id in self.section_headers.keys():
+            if id != SECTION_IDS.HEADER and only_sections and id not in only_sections:
+                continue
+
+            self.process_section(id)
+
+
+    def find_sections(self):
+        section_headers: Dict[bytes, SectionHeader] = {}
+        start_of_sections_offset = self.b.offset
+        previous_header = None
+
         while self.b.has_bytes():
-            self.read_section()
+            section_offset = self.b.offset
+            header = self.read_section_header()
+
+            # Sometimes there is garbage data between sections.
+            # ex of a problematic qst file: 208/quests-1188722503-package-1st.qst (MAP section)
+            if not re.match('\w{3,4}', header.id.decode('ascii', errors='ignore')):
+                log.warning(
+                    f'garbage section id: {header.id}, skipping ahead some bytes...')
+                bytes_to_extend = 0
+                while header and header.id not in vars(SECTION_IDS).values():
+                    bytes_to_extend += 1
+                    self.b.offset = section_offset + bytes_to_extend
+                    try:
+                        header = self.read_section_header()
+                    except:
+                        self.b.offset = section_offset
+                        header = None
+
+                log.warning(
+                    f'found this many junk bytes between sections: {bytes_to_extend}')
+                if previous_header:
+                    log.warning(
+                        f'assuming that the previous section ({previous_header.id}) size was wrong, and extended it:')
+                    log.warning(
+                        f'  {previous_header.size} -> {previous_header.size + bytes_to_extend}')
+                    previous_header.size += bytes_to_extend
+                else:
+                    log.warning('just ignoring those bytes!')
+
+            if not header:
+                break
+
+            if header.size > self.b.bytes_remaining():
+                log.warning(
+                    f'size for section id {header.id} is bigger than remaining, ignoring')
+                break
+
+            section_headers[header.id] = header
+            previous_header = header
+            self.b.advance(header.size)
+
+        self.b.offset = start_of_sections_offset
+        return section_headers
 
     # https://github.com/ArmageddonGames/ZeldaClassic/blob/30c9e17409304390527fcf84f75226826b46b819/src/zq_class.cpp#L5414
     def read_zgp(self):
-        id, section_version, section_cversion = self.read_section_header()
-        assert_equal(SECTION_IDS.GRAPHICSPACK, id)
-
-        while self.b.has_bytes():
-            self.read_section()
+        pass
 
     # https://github.com/ArmageddonGames/ZeldaClassic/blob/bdac8e682ac1eda23d775dacc5e5e34b237b82c0/src/zq_class.cpp#L6189
     # https://github.com/ArmageddonGames/ZeldaClassic/blob/20f9807a8e268172d0bd2b0461e417f1588b3882/src/qst.cpp#L2005
@@ -134,89 +215,54 @@ class ZeldaClassicReader:
         log.debug(self.version)
         log.debug(self.header.title)
 
-    def read_section_header(self):
-        id = bytes(self.b.read(4))
-        section_version = self.b.read_int()
-        section_cversion = self.b.read_int()
-        return (id, section_version, section_cversion)
 
-    def read_section(self):
-        offset = self.b.bytes_read()
-        id, section_version, section_cversion = self.read_section_header()
-        if id == SECTION_IDS.RULES and section_version > 16:
+    def read_section_header(self):
+        offset = self.b.offset
+        id = bytes(self.b.read(4))
+        version = self.b.read_int()
+        cversion = self.b.read_int()
+        if id == SECTION_IDS.RULES and version > 16:
             # TODO do something with this
             compatrule_version = self.b.read_long()
-        size = self.b.read_long()
-
-        # Sometimes there is garbage data between sections.
-        if not re.match("\w{3,4}", id.decode("ascii", errors="ignore")):
-            log.warning(f"garbage section id: {id}, skipping ahead some bytes...")
-            while id not in vars(SECTION_IDS).values():
-                self.b.advance(-12 + 1)
-                offset = self.b.bytes_read()
-                id, section_version, section_cversion = self.read_section_header()
-                size = self.b.read_long()
-
-        self.section_offsets[id] = offset
-        self.section_versions[id] = section_version
-        self.section_cversions[id] = section_cversion
-
-        sections = {
-            SECTION_IDS.HEADER: self.read_header,
-            SECTION_IDS.TILES: self.read_tiles,
-            SECTION_IDS.COMBOS: self.read_combos,
-            SECTION_IDS.CSETS: self.read_csets,
-            SECTION_IDS.DMAPS: self.read_dmaps,
-            SECTION_IDS.MAPS: self.read_maps,
-            SECTION_IDS.GUYS: self.read_guys,
-            SECTION_IDS.WEAPONS: self.read_weapons,
-            SECTION_IDS.LINKSPRITES: self.read_link_sprites,
-            SECTION_IDS.ITEMS: self.read_items,
-            SECTION_IDS.MIDIS: self.read_midis,
-            SECTION_IDS.DOORS: self.read_doors,
-            SECTION_IDS.RULES: self.read_rules,
-            SECTION_IDS.INITDATA: self.read_init,
-            SECTION_IDS.STRINGS: self.read_str,
-        }
-
-        if size > self.b.length - self.b.bytes_read():
-            log.warning('section size is bigger than rest of data, clamping')
-            size = self.b.length - self.b.bytes_read()
-
-        self.section_lengths[id] = size
-        section_bytes = Bytes(self.b.read(size))
-        # TODO: lazily reading these sections might be better.
-        only_sections = self.opts['only_sections'] if 'only_sections' in self.opts else None
-        if id in sections:
-            ok = True
-            if only_sections and id not in only_sections and id != SECTION_IDS.HEADER:
-                return
-
-            log.debug(f'{id} {section_version}\t{section_cversion}\t{size}')
-
-            try:
-                sections[id](section_bytes, section_version, section_cversion)
-            except Exception as e:
-                ok = False
-                error = "".join(traceback.TracebackException.from_exception(e).format())
-                log.error(error)
-                self.errors.append(error)
-
-            remaining = size - section_bytes.bytes_read()
-            if remaining != 0:
-                ok = False
-                log.warning(
-                    '%r section did not consume expected number of bytes. remaining: %r', id, remaining)
-
-            self.section_ok[id] = ok
         else:
-            log.debug('unhandled section %r %r', id, size)
+            compatrule_version = None
+        size = self.b.read_long()
+        data_offset = self.b.offset
+        return SectionHeader(id=id, version=version, cversion=cversion,
+                             offset=offset, data_offset=data_offset, size=size,
+                             extra=compatrule_version)
 
-    def read_gpak(self, section_version, section_cversion):
-        pass
+
+    def process_section(self, id: bytes):
+        header = self.section_headers[id]
+
+        if id not in self.sections:
+            log.debug(f'{id} v{header.version:<3}\t{header.size} (unhandled)')
+            return
+
+        log.debug(f'{id} v{header.version:<3}\t{header.size}')
+
+        self.b.offset = header.data_offset
+        section = self.sections[id]
+        try:
+            section(self.b, header.version, header.cversion)
+            self.section_ok[id] = True
+        except Exception as e:
+            self.section_ok[id] = False
+            error = ''.join(traceback.TracebackException.from_exception(e).format())
+            log.error(error)
+            self.errors.append(error)
+            return
+
+        bytes_read = self.b.offset - header.data_offset
+        remaining = header.size - bytes_read
+        if remaining != 0:
+            self.section_ok[id] = False
+            log.warning(
+                f'{id} section did not consume expected number of bytes. remaining: {remaining}')
+
 
     # https://github.com/ArmageddonGames/ZeldaClassic/blob/30c9e17409304390527fcf84f75226826b46b819/src/zq_class.cpp#L9184
-
     def read_tiles(self, section_bytes, section_version, section_cversion):
         data, fields = read_section(section_bytes, SECTION_IDS.TILES,
                                     self.version, section_version)
@@ -324,10 +370,10 @@ class ZeldaClassicReader:
         self.section_fields[SECTION_IDS.RULES] = fields
 
     def read_init(self, section_bytes, section_version, section_cversion):
-        data, fields = read_section(section_bytes, SECTION_IDS.INITDATA,
+        data, fields = read_section(section_bytes, SECTION_IDS.INIT,
                                     self.version, section_version)
         self.init = data
-        self.section_fields[SECTION_IDS.INITDATA] = fields
+        self.section_fields[SECTION_IDS.INIT] = fields
 
     def read_str(self, section_bytes, section_version, section_cversion):
         data, fields = read_section(section_bytes, SECTION_IDS.STRINGS,
@@ -336,6 +382,9 @@ class ZeldaClassicReader:
         self.section_fields[SECTION_IDS.STRINGS] = fields
 
     def save_qst(self, qst_path):
+        if self.is_too_old:
+            raise Exception(f'pre-1.93 quests currently cannot be saved')
+
         with tempfile.NamedTemporaryFile() as tmp:
             tmp.write(serialize(self))
             err = py_encode(tmp.name, qst_path, self.method, self.key)

@@ -26,7 +26,14 @@ def get_map_field(version: Version, sversion: int) -> F:
         'item': 'B',
         'has_item': 'B' if version >= Version(zelda_version=0x211, build=14) else None,
         '_padding0': 'B' if version < Version(zelda_version=0x192, build=154) else None,
-        'tile_warp_type': F(arr_len=common_arr_len, type='B'),
+
+        **({
+            'tile_warp_type': F(arr_len=1, type='B'),
+            '_padding0.1': 'B',
+        } if version.zelda_version < 0x193 else {
+            'tile_warp_type': F(arr_len=common_arr_len, type='B'),
+        }),
+
         'door_combo_set': 'H' if version > Version(zelda_version=0x192, build=153) else None,
         'warp_return_x': F(arr_len=common_arr_len, type='B'),
         'warp_return_y': F(arr_len=common_arr_len, type='B'),
@@ -35,7 +42,10 @@ def get_map_field(version: Version, sversion: int) -> F:
         'stair_y': 'B',
         'item_x': 'B',
         'item_y': 'B',
-        'color': 'H' if sversion > 15 else 'B',
+
+        'color': 'H' if sversion > 15 else None,
+        '_padding0.2': 'B' if sversion <= 15 else None,
+
         'enemy_flags': 'B',
         'doors': F(arr_len=4, type='B'),
         'tile_warp_dmap': F(arr_len=common_arr_len, type='H' if sversion > 11 else 'B'),
@@ -101,15 +111,17 @@ def get_map_field(version: Version, sversion: int) -> F:
                 'data': 'H',
                 'cset': 'B',
                 'delay': 'H',
-                'x': 'I' if sversion >= 9 else None,
-                'y': 'I' if sversion >= 9 else None,
-                'x_delta': 'I' if sversion >= 9 else None,
-                'y_delta': 'I' if sversion >= 9 else None,
-                'x_delta_2': 'I' if sversion >= 9 else None,
-                'y_delta_2': 'I' if sversion >= 9 else None,
+                # TODO types here are actually floats (and change at version 9)
+                'x': 'I',
+                'y': 'I',
+                'x_delta': 'I',
+                'y_delta': 'I',
+                'x_delta_2': 'I',
+                'y_delta_2': 'I',
+                # ---- end TODO
                 'link': 'B',
-                'width': 'B' if sversion > 7 else None,
-                'height': 'B' if sversion > 7 else None,
+                'hxsz_txsz': 'B' if sversion > 7 else None,
+                'hysz_tysz': 'B' if sversion > 7 else None,
                 'flags': 'I' if sversion > 7 else None,
                 'script': 'H' if sversion > 9 else None,
                 'initd': F(arr_len=8, type='I') if sversion > 10 else None,

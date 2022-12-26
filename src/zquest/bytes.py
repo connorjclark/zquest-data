@@ -16,10 +16,16 @@ class Bytes:
         # appended to the end of the bytearray.
         self.offset = 0
         self.data = data
-        self.length = len(data)
+
+    @property
+    def length(self):
+        return len(self.data)
 
     def bytes_read(self):
         return self.offset
+
+    def bytes_remaining(self):
+        return self.length - self.offset
 
     def advance(self, n: int):
         self.offset += n
