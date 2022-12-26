@@ -1,4 +1,3 @@
-import enum
 import os
 import unittest
 import hashlib
@@ -6,6 +5,7 @@ from pathlib import Path
 from copy import deepcopy
 
 from zquest.extract import ZeldaClassicReader
+from zquest.section_utils import SECTION_IDS
 
 os.makedirs('.tmp', exist_ok=True)
 
@@ -103,6 +103,25 @@ class TestReader(unittest.TestCase):
         self.assertEqual(reader.maps[0].screens[10].str, 6)
         self.assertEqual(reader.maps[3].screens[10].str, 6)
         self.assertEqual(reader.combos[0].tile, 316)
+
+    def test_quest_rules_post_compat(self):
+        in_files = [
+            'test_data/1st.qst',
+            'test_data/Eckland.qst',
+            'test_data/Classic XD.qst',
+            'test_data/lost_isle.qst',
+            'test_data/firebird.qst',
+            'test_data/bs/2.5/NewBS 3.1 - 1st Quest.qst',
+            'test_data/1st-latest.qst',
+            'test_data/InsertQuestTitleHere.qst',
+        ]
+        for in_file in in_files:
+            reader = ZeldaClassicReader(in_file, {
+                'only_sections': [SECTION_IDS.RULES],
+            })
+            reader.read_qst()
+            # For now, just make sure this does not raise an exception.
+            reader.get_quest_rules_post_compat()
 
 
 if __name__ == '__main__':

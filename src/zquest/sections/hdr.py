@@ -25,6 +25,16 @@ def get_hdr_field(version: Version, sversion: int) -> F:
             'version': '9s',
             'title': '65s',
             'author': '65s',
+            'padding_2': 'B',
+            'pwdkey': 'H',
+            'pwd': F(type='bytes', arr_len=30),
+
+            **({
+                'minver': '9s',
+                'build': 'B',
+                'use_keyfile': 'B',
+                'dummy_3': '9s',
+            } if version.zelda_version >= 0x177 else {}),
         })
 
     templatepath_len = 2048

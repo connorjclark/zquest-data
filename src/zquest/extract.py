@@ -10,6 +10,7 @@ from .pretty_json import pretty_json_format
 from .section_utils import SECTION_IDS, read_section, serialize
 from .version import Version
 from .bit_field import BitField
+from .compat_rules import process_compat_rules
 from . import constants
 
 log = logging.getLogger('zquest')
@@ -202,9 +203,17 @@ class ZeldaClassicReader:
     # https://github.com/ArmageddonGames/ZeldaClassic/blob/20f9807a8e268172d0bd2b0461e417f1588b3882/src/qst.cpp#L2005
     # zdefs.h
 
-    def read_header(self, section_bytes, section_version, section_cversion):
-        data, fields = read_section(section_bytes, SECTION_IDS.HEADER,
-                                    Version(None, None, self.preamble), section_version)
+    def read_header(self, section_bytes: Bytes, section_version, section_cversion):
+        version = Version(None, None, self.preamble)
+        # Older format needs zelda_version ahead of time to create the header field.
+        if version.preamble == b'AG Zelda Classic Quest File\n ':
+            offset = section_bytes.offset
+            section_bytes.advance(1)
+            version.zelda_version = section_bytes.read_int()
+            section_bytes.offset = offset
+
+        data, fields = read_section(
+            section_bytes, SECTION_IDS.HEADER, version, section_version)
         self.header = data
         self.section_fields[SECTION_IDS.HEADER] = fields
 
@@ -222,7 +231,6 @@ class ZeldaClassicReader:
         version = self.b.read_int()
         cversion = self.b.read_int()
         if id == SECTION_IDS.RULES and version > 16:
-            # TODO do something with this
             compatrule_version = self.b.read_long()
         else:
             compatrule_version = None
@@ -412,4 +420,24 @@ class ZeldaClassicReader:
         return pretty_json_format(data)
 
     def get_quest_rules(self):
+        if not self.rules:
+            raise Exception('qst is too old')
+
         return BitField(constants.quest_rules, self.rules)
+
+    def get_quest_rules_post_compat(self):
+        """
+            Many QRs are force set when the .qst is read. This function
+            mimics that behavior.
+
+            See:
+            https://github.com/ArmageddonGames/ZQuestClassic/blob/3e20ca69332b818e8799746d7d1e3dfdf8e3afa5/src/qst.cpp#L2979-L2979
+        """
+        if not self.rules:
+            raise Exception('qst is too old')
+
+        rule_bytes = bytearray(100)
+        rule_bytes[0:len(self.rules)] = self.rules
+        rules = BitField(constants.quest_rules, rule_bytes)
+        process_compat_rules(self, rules)
+        return rules
