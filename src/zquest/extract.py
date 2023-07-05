@@ -399,6 +399,16 @@ class ZeldaClassicReader:
             if err != 0:
                 raise Exception(f'error encoding: {err}')
 
+    def save_qst_no_serialize(self, qst_path):
+        if self.is_too_old:
+            raise Exception(f'pre-1.93 quests currently cannot be saved')
+
+        with tempfile.NamedTemporaryFile() as tmp:
+            tmp.write(self.b.data)
+            err = py_encode(tmp.name, qst_path, self.method, self.key)
+            if err != 0:
+                raise Exception(f'error encoding: {err}')
+
     def to_json(self):
         data = {
             'errors': self.errors,
