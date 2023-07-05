@@ -9,4 +9,9 @@ args = parser.parse_args()
 reader = ZeldaClassicReader(args.input, {'only_sections': [SECTION_IDS.HEADER]})
 reader.read_qst()
 
-print(reader.header)
+for key, value in reader.header.__dict__.items():
+    print(key.ljust(15), value)
+
+print('\nSections:')
+for header in reader.section_headers.values():
+    print(header.id.decode('utf-8').strip().ljust(15), header.size)
