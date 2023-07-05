@@ -44,7 +44,7 @@ class Bytes:
     def read(self, n: int) -> bytearray:
         result = self.data[self.offset:self.offset+n]
         self.offset += n
-        # TODO: 1st-latest.qst rule section should be 100 bytes, but is only 26?
+        # TODO: 1st-may-2022.qst rule section should be 100 bytes, but is only 26?
         # old file-based (self.f.read) code made this no problem, but new code
         # needs to bound the offset to self.length to prevent noisy errors
         # should fix this.

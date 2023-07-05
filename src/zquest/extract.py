@@ -139,7 +139,7 @@ class ZeldaClassicReader:
 
         only_sections = self.opts['only_sections'] if 'only_sections' in self.opts else None
         for id in self.section_headers.keys():
-            if id != SECTION_IDS.HEADER and only_sections and id not in only_sections:
+            if id != SECTION_IDS.HEADER and only_sections != None and id not in only_sections:
                 continue
 
             self.process_section(id)
@@ -400,9 +400,6 @@ class ZeldaClassicReader:
                 raise Exception(f'error encoding: {err}')
 
     def save_qst_no_serialize(self, qst_path):
-        if self.is_too_old:
-            raise Exception(f'pre-1.93 quests currently cannot be saved')
-
         with tempfile.NamedTemporaryFile() as tmp:
             tmp.write(self.b.data)
             err = py_encode(tmp.name, qst_path, self.method, self.key)

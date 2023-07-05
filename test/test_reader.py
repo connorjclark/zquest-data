@@ -36,32 +36,34 @@ class TestReader(unittest.TestCase):
             'test_data/lost_isle.qst',
             'test_data/firebird.qst',
             'test_data/bs/2.5/NewBS 3.1 - 1st Quest.qst',
-            'test_data/1st-latest.qst',
+            'test_data/1st-may-2022.qst',
             'test_data/InsertQuestTitleHere.qst',
+            'test_data/1st-jul-2023.qst',
         ]
         for in_file in in_files:
-            reader = ZeldaClassicReader(in_file)
-            reader.read_qst()
-            if in_file == 'test_data/Eckland.qst':
-                # TODO support saving pre-1.93 quests
-                continue
+            with self.subTest(in_file):
+                reader = ZeldaClassicReader(in_file)
+                reader.read_qst()
+                if in_file == 'test_data/Eckland.qst':
+                    # TODO support saving pre-1.93 quests
+                    continue
 
-            reader.save_qst('.tmp/test.qst')
+                reader.save_qst('.tmp/test.qst')
 
-            original_hash = hashlib.md5(Path(in_file).read_bytes()).hexdigest()
-            copy_hash = hashlib.md5(Path('.tmp/test.qst').read_bytes()).hexdigest()
-            self.assertEqual(original_hash, copy_hash)
+                original_hash = hashlib.md5(Path(in_file).read_bytes()).hexdigest()
+                copy_hash = hashlib.md5(Path('.tmp/test.qst').read_bytes()).hexdigest()
+                self.assertEqual(original_hash, copy_hash)
 
-            for id, ok in reader.section_ok.items():
-                # TODO fix these sections
-                if in_file == 'test_data/InsertQuestTitleHere.qst':
-                    if id in [b'INIT', b'GUY ']:
-                        continue
-                if in_file == 'test_data/1st-latest.qst':
-                    if id in [b'INIT', b'CSET']:
-                        continue
-                if not ok:
-                    raise Exception(f'{in_file}: failed to parse section {id}')
+                for id, ok in reader.section_ok.items():
+                    # TODO fix these sections
+                    if in_file == 'test_data/InsertQuestTitleHere.qst':
+                        if id in [b'INIT', b'GUY ']:
+                            continue
+                    if in_file == 'test_data/1st-may-2022.qst':
+                        if id in [b'INIT', b'CSET']:
+                            continue
+                    if not ok:
+                        raise Exception(f'{in_file}: failed to parse section {id}')
 
     def test_modify_qst(self):
         reader = ZeldaClassicReader('test_data/1st.qst')
@@ -112,16 +114,18 @@ class TestReader(unittest.TestCase):
             'test_data/lost_isle.qst',
             'test_data/firebird.qst',
             'test_data/bs/2.5/NewBS 3.1 - 1st Quest.qst',
-            'test_data/1st-latest.qst',
+            'test_data/1st-may-2022.qst',
             'test_data/InsertQuestTitleHere.qst',
+            'test_data/1st-jul-2023.qst',
         ]
         for in_file in in_files:
-            reader = ZeldaClassicReader(in_file, {
-                'only_sections': [SECTION_IDS.RULES],
-            })
-            reader.read_qst()
-            # For now, just make sure this does not raise an exception.
-            reader.get_quest_rules_post_compat()
+            with self.subTest(in_file):
+                reader = ZeldaClassicReader(in_file, {
+                    'only_sections': [SECTION_IDS.RULES],
+                })
+                reader.read_qst()
+                # For now, just make sure this does not raise an exception.
+                reader.get_quest_rules_post_compat()
 
 
 if __name__ == '__main__':
