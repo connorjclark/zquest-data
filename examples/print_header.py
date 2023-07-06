@@ -14,4 +14,7 @@ for key, value in reader.header.__dict__.items():
 
 print('\nSections:')
 for header in reader.section_headers.values():
-    print(header.id.decode('utf-8').strip().ljust(15), header.size)
+    id = header.id.decode('utf-8').strip()
+    size = str(header.size)
+    size_human = str(round(header.size / 1024))
+    print(id.ljust(5), size.rjust(10), size_human.rjust(7), 'KB')
