@@ -406,6 +406,13 @@ class ZeldaClassicReader:
             if err != 0:
                 raise Exception(f'error encoding: {err}')
 
+    def save_qst_no_serialize_no_compression(self, qst_path):
+        with tempfile.NamedTemporaryFile() as tmp:
+            tmp.write(self.b.data)
+            err = py_encode(tmp.name, qst_path, -2, self.key)
+            if err != 0:
+                raise Exception(f'error encoding: {err}')
+
     def to_json(self):
         data = {
             'errors': self.errors,

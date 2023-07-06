@@ -491,9 +491,9 @@ int get_decoded_key() {
 int encode(const char* inputpath, const char* outpath, int method, int key) {
   allegro_errno = &alle_errno;
 
-  if (method == -1)
+  if (method == -1 || method == -2)
   {
-    PACKFILE *pf = pack_fopen(outpath, F_WRITE_PACKED);
+    PACKFILE *pf = pack_fopen(outpath, method == -1 ? F_WRITE_PACKED : F_WRITE);
 
     FILE *f = fopen(inputpath, "rb");
     int c;
